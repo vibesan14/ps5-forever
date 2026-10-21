@@ -398,6 +398,26 @@ cleanup() {
     exit "$status"
 }
 trap cleanup EXIT
+# The host materialized this tree with Git for Windows: symbol links fell
+# back to plain files and the executable bit was lost. Re-materialize the
+# tracked tree content from the Git object store inside Linux, where real
+# symlinks and modes are created, before anything validates or builds.
+rematerialize_windows_checkouts() {
+    python3 - "$root" "$here/deps.json" <<'PY'
+import json, pathlib, subprocess, sys
+root = pathlib.Path(sys.argv[1])
+deps = json.load(open(sys.argv[2]))
+paths = [deps['project']['path'], *[source['path'] for source in deps['sources']]]
+for path in sorted(set(paths)):
+    repo = root / path
+    subprocess.run(['git', '-C', str(repo), 'config', 'core.symlinks', 'true'])
+    result = subprocess.run(['git', '-C', str(repo), 'reset', '--hard', '--quiet'])
+    if result.returncode:
+        raise SystemExit(f'{path}: git reset --hard failed: {result.returncode}')
+    print(f'REMATERIALIZED {path}')
+PY
+}
+stage rematerialize rematerialize_windows_checkouts
 stage inputs validate_sources
 stage host-tests make -s -C ps5/probes/psmkit-wine test \
     HOST_CC=clang-19 \
