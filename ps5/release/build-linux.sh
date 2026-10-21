@@ -420,8 +420,15 @@ for path in sorted(set(paths)):
     print(f'REMATERIALIZED {path}')
 PY
 }
+# Upstream pinned blobs contain CRLF endings (e.g. PS5_Vulkan's
+# runtime/libc.prx.sha256); a global attribute rule makes Git hand the
+# container LF worktrees while keeping them clean against the index.
+mkdir -p "$HOME"
+printf '* text=auto eol=lf\n' > "$HOME/.gitattributes-global"
+git config --global core.attributesFile "$HOME/.gitattributes-global"
 stage rematerialize rematerialize_windows_checkouts
 stage inputs validate_sources
+
 stage host-tests make -s -C ps5/probes/psmkit-wine test \
     HOST_CC=clang-19 \
     MINGW_CC="$LLVM_MINGW/bin/x86_64-w64-mingw32-clang" \
