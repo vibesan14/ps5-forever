@@ -410,7 +410,10 @@ deps = json.load(open(sys.argv[2]))
 paths = [deps['project']['path'], *[source['path'] for source in deps['sources']]]
 for path in sorted(set(paths)):
     repo = root / path
-    subprocess.run(['git', '-C', str(repo), 'config', 'core.symlinks', 'true'])
+    # The share is owned by the host user; make it writable for git inside
+    # the container before any repository-level operation.
+    subprocess.run(['git', 'config', '--global', '--add', 'safe.directory', str(repo)], check=True)
+    subprocess.run(['git', '-C', str(repo), 'config', 'core.symlinks', 'true'], check=True)
     result = subprocess.run(['git', '-C', str(repo), 'reset', '--hard', '--quiet'])
     if result.returncode:
         raise SystemExit(f'{path}: git reset --hard failed: {result.returncode}')
