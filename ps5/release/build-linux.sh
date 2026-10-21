@@ -15,6 +15,10 @@ if [[ ${1:-} != --container ]]; then
     image_id=$(docker image inspect --platform linux/amd64 --format '{{.Id}}' "$image" 2>/dev/null) ||
         image_id=$(docker image inspect --format '{{.Id}}' "$image")
     printf 'BUILD_STAGE image seconds=%s id=%s\n' "$((SECONDS - start))" "$image_id"
+    # Git Bash (MSYS) rewrites POSIX arguments passed to the native docker
+    # CLI, turning the in-container script path below into a Windows path;
+    # disable that conversion so the arguments stay verbatim.
+    export MSYS_NO_PATHCONV=1
     exec docker run --rm --platform linux/amd64 \
         --user "$(id -u):$(id -g)" \
         --env HOME=/tmp/forever-builder \
