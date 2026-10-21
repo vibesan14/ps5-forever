@@ -15,8 +15,8 @@ RUN printf '%s\n' \
       'Components: main universe' \
       'Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
       'Check-Valid-Until: no' > /etc/apt/sources.list.d/ubuntu.sources \
-    && apt-get -o Acquire::https::CaInfo=/tmp/ca-bootstrap.pem update \
-    && apt-get -o Acquire::https::CaInfo=/tmp/ca-bootstrap.pem install -y --no-install-recommends \
+    && apt-get -o Acquire::Retries=12 -o Acquire::https::CaInfo=/tmp/ca-bootstrap.pem update \
+    && apt-get -o Acquire::Retries=12 -o Acquire::https::CaInfo=/tmp/ca-bootstrap.pem install -y --no-install-recommends \
       autoconf automake bison build-essential ca-certificates cmake curl file flex \
       gettext git libtool libtool-bin pkg-config rsync unzip wget xz-utils \
       clang-18 clang-19 lld-18 lld-19 llvm-18-dev llvm-19-dev \
