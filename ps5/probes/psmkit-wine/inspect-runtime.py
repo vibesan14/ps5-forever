@@ -121,10 +121,10 @@ if args.profile == 'b1':
             'libSceSystemService.prx', 'libSceUserService.prx',
             'libSceVideoOut.prx',
         ]
-    EXPECTED_PARENT_PRE_NEEDED = sorted(set(EXPECTED_PARENT_PRE_NEEDED) | {
-        'libSceHttp2.sprx', 'libSceSsl.sprx'}, key=str.lower)
-    EXPECTED_PARENT_NEEDED = sorted(set(EXPECTED_PARENT_NEEDED) | {
-        'libSceHttp2.prx', 'libSceSsl.prx'}, key=str.lower)
+    EXPECTED_PARENT_PRE_NEEDED = sorted(
+        set(EXPECTED_PARENT_PRE_NEEDED), key=str.lower)
+    EXPECTED_PARENT_NEEDED = sorted(
+        set(EXPECTED_PARENT_NEEDED), key=str.lower)
     # libSceIme's stub (ps5/title/stubs, soname libSceIme.prx, like AGC's) is
     # linked after the SDK's stubs (ps5/title/build.sh): the last needed library.
     for needed in (EXPECTED_PARENT_PRE_NEEDED, EXPECTED_PARENT_NEEDED):
