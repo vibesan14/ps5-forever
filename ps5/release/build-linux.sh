@@ -417,6 +417,27 @@ for path in sorted(set(paths)):
     result = subprocess.run(['git', '-C', str(repo), 'reset', '--hard', '--quiet'])
     if result.returncode:
         raise SystemExit(f'{path}: git reset --hard failed: {result.returncode}')
+    # Files whose Windows-era worktree copy still carries CRLF must be
+    # deleted and re-checked out so the LF attribute rule applies.
+    listed = subprocess.run(['git', '-C', str(repo), 'ls-files', '--eol', '-z'],
+                            capture_output=True, check=True).stdout
+    stale = []
+    for record in listed.split(b'\x00'):
+        if not record:
+            continue
+        fields = record.decode('utf-8', 'replace').split('\t')
+        if len(fields) < 4:
+            continue
+        work_eol, attr = fields[1], ' '.join(fields[2:-1])
+        if ('crlf' in work_eol or 'mixed' in work_eol) and 'eol=lf' in attr:
+            stale.append(fields[-1])
+    for batch in range(0, len(stale), 128):
+        chunk = stale[batch:batch + 128]
+        for name in chunk:
+            (repo / name).unlink(missing_ok=True)
+        subprocess.run(['git', '-C', str(repo), 'checkout', '--', *chunk], check=True)
+    if stale:
+        print(f'RESMUDGED {path}: {len(stale)} CRLF worktree files')
     print(f'REMATERIALIZED {path}')
 PY
 }
