@@ -176,7 +176,8 @@ def profile(name, overrides=None):
             raise ValueError('profile overrides are a B1 JSON object only')
         allowed = {'argv', 'cwd', 'prefix', 'home', 'dll_overrides', 'child_dll_overrides',
                    'debug', 'headless', 'payload_programs', 'refused_programs',
-                   'browser_switches', 'gpu', 'runtime_game', 'environment', 'prefetch_hosts', 'dns_upstreams'}
+                   'browser_switches', 'gpu', 'runtime_game', 'environment', 'prefetch_hosts',
+                   'dns_upstreams', 'default_channel'}
         if overrides.keys() - allowed:
             raise ValueError(f'unsupported B1 profile inputs: {sorted(overrides.keys()-allowed)}')
         for key, value in overrides.items():
@@ -218,6 +219,16 @@ def profile(name, overrides=None):
                             for part in server.split('.')) or server == '0.0.0.0'
                         for server in value)):
                     raise ValueError('B1 dns_upstreams must be up to 4 unique dotted IPv4 addresses')
+                selected[key] = value
+            elif key == 'default_channel':
+                # WoW channel folder the direct-game path launches when no
+                # replay record exists ('' keeps the game's own ->startup
+                # fallback); must be a bare `_name_` folder basename.
+                if (not isinstance(value, str) or len(value) > 255 or not value.isascii() or
+                        (value and (len(value) < 3 or value[0] != '_' or value[-1] != '_' or
+                                    any(ord(char) < 0x20 or ord(char) > 0x7e or char in '<>:"/\\|?*'
+                                        for char in value)))):
+                    raise ValueError('B1 default_channel must be empty or a `_name_` WoW channel folder name')
                 selected[key] = value
             elif key == 'child_dll_overrides':
                 if (not isinstance(value, str) or not value or len(value) > 4096 or
@@ -380,6 +391,8 @@ def qualified_b1_folder(folder):
         'refused_programs': supplied.get('refused_programs', []),
         'prefetch_hosts': supplied.get('prefetch_hosts', []),
         'dns_upstreams': supplied.get('dns_upstreams', []),
+        **({'default_channel': supplied['default_channel']}
+           if 'default_channel' in supplied else {}),
         **({'browser_switches': supplied['browser_switches']} if supplied.get('browser_switches') else {}),
         **({'gpu': supplied['gpu']} if supplied.get('gpu') else {}),
         **({'child_dll_overrides': supplied['child_dll_overrides']}
@@ -399,6 +412,8 @@ def qualified_b1_folder(folder):
             'refused_programs': game_supplied.get('refused_programs', []),
             'prefetch_hosts': game_supplied.get('prefetch_hosts', []),
             'dns_upstreams': game_supplied.get('dns_upstreams', []),
+            **({'default_channel': game_supplied['default_channel']}
+               if 'default_channel' in game_supplied else {}),
             **({'browser_switches': game_supplied['browser_switches']} if game_supplied.get('browser_switches') else {}),
             'gpu': True,
             **({'child_dll_overrides': game_supplied['child_dll_overrides']}

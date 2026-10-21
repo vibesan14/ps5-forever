@@ -1,3 +1,40 @@
+# AnoCore Launcher
+
+AnoCore Launcher is a fork of **Forever Launcher** (`ps5-forever`, GPL-3.0) that
+never starts Battle.net. The same title (`PPSA99030`) becomes a direct game
+starter: on every launch it picks the `_classic_beta_` WoW channel, hands the
+client (`WowB.exe -launcherlogin -uid wow_classic_beta`) straight to the game
+parent, and the client connects to the private **AnoCore** realm instead of
+Blizzard's servers.
+
+What the fork changes:
+
+- **No Battle.net, ever.** The stock Battle.net installer path stays compiled in
+  but is switched off (`PW_RUNTIME_INSTALLER_ENABLED 0`): a missing channel
+  client shows a on-screen notice, it never downloads a launcher.
+- **Default channel.** `b1-product.json` sets `"default_channel":
+  "_classic_beta_"`. The one-shot `/app0/wine/direct-game` flag file still
+  exists for an explicit selector, but with no flag the app starts the modified
+  defaults' channel on its own (`PS5/release/defaults/Config.wtf`).
+- **Trust for the private realm's TLS.** `ps5/probes/psmkit-wine/anocore-root-ca.pem`
+  is the realm's root CA; `build-runtime.py` appends it to the title's
+  `share/wine/cacert.pem` alongside Mozilla's bundle.
+- **Server check in the log.** When the game starts, a detached thread resolves
+  the client's `WTF/Config.wtf` `SET portal` name and TCP-connects the login
+  bridge (1119) and world (8085) ports, then logs the result to the kernel log.
+  It is log-only and never delays or blocks the start.
+- **Identity.** `param.json` shows `AnoCore Launcher`, version `01.000.100`.
+
+Building it stays the same as upstream: fork this repository on GitHub, point
+the repository's GitHub Actions runner (self-hosted Linux with the PS5 toolchain)
+at it, then push the tag `01.000.100` (the release workflow takes the version
+from `ps5/title/sce_sys/param.json`, builds `eboot.bin` + `game.bin`, and
+attaches `PPSA99030.zip` to the release). Install it the same way Forever
+Launcher installs, with WoW Forever Beta in `/data/homebrew/PPSA99030` (see the
+upstream *What you need* section).
+
+---
+
 # Forever Launcher
 
 Run **Battle.net** on a jailbroken **PlayStation 5**.

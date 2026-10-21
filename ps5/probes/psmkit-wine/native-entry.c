@@ -405,6 +405,11 @@ static struct wine_ps5_title_runtime native_runtime = {
 #if defined(PW_RUNTIME_B1) && defined(PW_PARENT_ROLE)
 extern int sceSystemServiceLoadExec(const char *, const char *const []);
 static atomic_int forever_broker_repair_restart_claimed;
+/* AnoCore fork: the channel started by itself when the one-shot direct-game
+ * flag file is absent. Empty keeps the stock Battle.net maintenance start. */
+#ifndef PW_RUNTIME_DEFAULT_CHANNEL
+#define PW_RUNTIME_DEFAULT_CHANNEL ""
+#endif
 static int pw_title_writebroker_restart(void);
 #if !PW_RUNTIME_GPU
 static struct pw_game_wire game_wire;
@@ -505,37 +510,63 @@ static int pw_maintenance_direct_game(void)
     struct wow_channel channel;
     char selector[WOW_FOLDER_BYTES + 16];
     struct pw_game_wire replay;
-    int recorded = 0, error, present = !stat(flag, &flag_stat);
-    if (!present) return 0;
-    error = forever_read_file(flag, selector, sizeof(selector));
-    int removed = unlink(flag), unlink_errno = errno;
-    if (!pw_game_direct_flag_consumed(present, removed))
+    int recorded = 0, error = 0, present = !stat(flag, &flag_stat);
+    if (!present)
     {
-        io_log("b1 maintenance direct game flag=unlink-failed errno=%d", unlink_errno);
-        return 0;
+        /* AnoCore fork: direct game is the default start. An empty default
+         * keeps the stock behavior (continue into the maintenance desktop). */
+        if (!*PW_RUNTIME_DEFAULT_CHANNEL) return 0;
+        snprintf(selector, sizeof(selector), "%s", PW_RUNTIME_DEFAULT_CHANNEL);
+        io_log("b1 maintenance direct game default channel=%s", selector);
     }
-    io_log("b1 maintenance direct game flag=consumed");
+    else
+    {
+        error = forever_read_file(flag, selector, sizeof(selector));
+        int removed = unlink(flag), unlink_errno = errno;
+        if (!pw_game_direct_flag_consumed(present, removed))
+        {
+            io_log("b1 maintenance direct game flag=unlink-failed errno=%d", unlink_errno);
+            char message[192];
+            snprintf(message, sizeof(message),
+                     "AnoCore could not consume the direct-game flag\n"
+                     "(error %d). Close the app and start it again to retry.",
+                     unlink_errno);
+            forever_say(message);
+            b1_wait();
+            return 1; /* never start Battle.net: the flag stays armed */
+        }
+        io_log("b1 maintenance direct game flag=consumed");
+    }
     if (error < 0 || pw_game_direct_selector(selector))
     {
-        io_log("b1 maintenance direct game selector invalid; continuing maintenance");
-        return 0;
+        io_log("b1 maintenance direct game selector invalid; no maintenance");
+        forever_say("AnoCore start unavailable: the direct-game selector is invalid.\n"
+                    "Write a channel folder name such as _classic_beta_ into the file.");
+        b1_wait();
+        return 1;
     }
     error = wow_channel_select(PW_RUNTIME_PREFIX, selector, &channel);
     if (error)
     {
         io_log("b1 maintenance direct game unavailable channel=%s error=%d; no fallback",
                selector[0] ? selector : "(automatic)", -error);
-        forever_say("Direct start unavailable: the requested WoW channel has no executable and loader pair.");
-        return 0;
+        forever_say("AnoCore start unavailable: the requested WoW channel has no executable\n"
+                    "and loader pair. Install the client once (copy it over FTP or run the\n"
+                    "official launcher once), then start AnoCore again.");
+        b1_wait();
+        return 1; /* never start Battle.net: another channel is never chosen */
     }
     error = pw_game_direct_launch(&replay, FOREVER_STATE, &channel, &recorded);
     if (!error)
         error = pw_parent_stage_game_launch((char **)replay.argv + 7, replay.argv[5], replay.argv[3], 0);
     if (error)
     {
-        io_log("b1 maintenance direct game validation failed error=%d argv=REDACTED cwd=REDACTED; continuing maintenance",
+        io_log("b1 maintenance direct game validation failed error=%d argv=REDACTED cwd=REDACTED; no maintenance",
                error);
-        return 0;
+        forever_say("AnoCore start unavailable: the recorded launch for this channel is invalid.\n"
+                    "Press Play in the official launcher once to record it, then start AnoCore again.");
+        b1_wait();
+        return 1;
     }
     io_log("b1 maintenance direct game source=%s argc=%u argv=REDACTED cwd=REDACTED",
            recorded ? "recorded-Play" : "flavor-fallback", replay.argc - 7);
@@ -1188,6 +1219,127 @@ static void pw_prefetch_hosts(void)
         if (!create_thread(&thread, NULL, pw_prefetch_host, host)) pthread_detach(thread);
     }
 }
+
+#if PW_RUNTIME_GPU
+/* AnoCore fork: report the private realm's reachability in the kernel log
+ * before the client starts. Reads the channel's Config.wtf portal name,
+ * resolves it through the title's resolver chain, then TCP-connects the login
+ * bridge (1119) and world (8085) ports. Runs detached so a slow or absent
+ * server can never delay the start; log-only, so the client keeps its own
+ * error handling for any other problem. */
+static void *pw_anocore_server_check(void *argument)
+{
+    static const int anocore_ports[] = {1119, 8085};
+    static const char *const anocore_labels[] = {"login=1119", "world=8085"};
+    const char *unix_cwd = argument;
+    char path[1024], line[256], name[256], message[320];
+    int pool, resolver = -1;
+    FILE *file;
+    unsigned int i;
+
+    name[0] = 0;
+    if (!unix_cwd || !*unix_cwd ||
+        (int)sizeof(path) <= snprintf(path, sizeof(path), "%s/WTF/Config.wtf", unix_cwd))
+        return NULL;
+    if (!(file = fopen(path, "r")))
+    {
+        io_log("anocore: portal check has no WTF/Config.wtf; no check");
+        return NULL;
+    }
+    while (fgets(line, sizeof(line), file))
+    {
+        if (!strncasecmp(line, "SET portal ", 11))
+        {
+            char *open_quote = strchr(line, '"'), *close_quote;
+            if (open_quote && (close_quote = strchr(open_quote + 1, '"')) &&
+                (size_t)(close_quote - open_quote) <= sizeof(name))
+            {
+                size_t length = (size_t)(close_quote - open_quote - 1);
+                if (length)
+                {
+                    memcpy(name, open_quote + 1, length);
+                    name[length] = 0;
+                }
+            }
+            break;
+        }
+    }
+    fclose(file);
+    if (!name[0])
+    {
+        io_log("anocore: portal check has no SET portal line; no check");
+        return NULL;
+    }
+    if ((pool = sceNetPoolCreate("pw_anocore", 0x4000, 0)) < 0)
+    {
+        io_log("anocore: portal check has no network pool");
+        return NULL;
+    }
+    resolver = sceNetResolverCreate("pw_anocore", pool, 0);
+    for (i = 0; resolver >= 0 && i < sizeof(anocore_ports) / sizeof(anocore_ports[0]); ++i)
+    {
+        uint32_t address = 0;
+        if (pw_resolver_ntoa_timed(resolver, name, &address, 0, 0, 0, "anocore") < 0)
+            io_log("anocore: portal=%s %s resolve failed", name, anocore_labels[i]);
+        else
+        {
+            uint32_t display;
+            struct sockaddr_in to;
+            int connected = 0, fd, one = 1;
+            display = ntohl(address);
+            memset(&to, 0, sizeof(to));
+            to.sin_family = AF_INET;
+            to.sin_port = htons((uint16_t)anocore_ports[i]);
+            to.sin_addr.s_addr = address;
+            fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (fd >= 0 && !setsockopt(fd, SOL_SOCKET, SO_NBIO, &one, sizeof(one)))
+            {
+                if (!connect(fd, (struct sockaddr *)&to, sizeof(to))) connected = 1;
+                else if (errno == EINPROGRESS || errno == EWOULDBLOCK)
+                    for (int64_t until = io_now_ms() + 3000; !connected;)
+                    {
+                        struct pollfd wait = {.fd = fd, .events = POLLOUT};
+                        int64_t now = io_now_ms();
+                        int result;
+                        if (now < 0 || now >= until) break;
+                        result = poll(&wait, 1, (int)(until - now));
+                        if (result < 0 && errno == EINTR) continue;
+                        if (result <= 0) break;
+                        {
+                            int socket_error = 0;
+                            socklen_t option_size = sizeof(socket_error);
+                            if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &socket_error, &option_size))
+                                break;
+                            if (socket_error) break;
+                        }
+                        connected = 1;
+                    }
+            }
+            snprintf(message, sizeof(message),
+                     "anocore: portal=%s %s ip=%u.%u.%u.%u connect=%s", name,
+                     anocore_labels[i], display & 0xff, (display >> 8) & 0xff,
+                     (display >> 16) & 0xff, display >> 24, connected ? "ok" : "failed");
+            io_log("%s", message);
+            if (fd >= 0) close(fd);
+        }
+    }
+    if (resolver < 0) io_log("anocore: portal check has no resolver");
+    if (resolver >= 0) sceNetResolverDestroy(resolver);
+    sceNetPoolDestroy(pool);
+    return NULL;
+}
+
+static void pw_anocore_server_check_async(const char *unix_cwd)
+{
+    static char anocore_cwd_copy[1024];
+    pthread_t thread;
+    if (snprintf(anocore_cwd_copy, sizeof(anocore_cwd_copy), "%s",
+                 unix_cwd ? unix_cwd : "") >= (int)sizeof(anocore_cwd_copy))
+        return;
+    if (!create_thread(&thread, NULL, pw_anocore_server_check, anocore_cwd_copy))
+        pthread_detach(thread);
+}
+#endif /* PW_RUNTIME_GPU */
 #endif
 #endif
 
@@ -3308,9 +3460,16 @@ int main(int argc, char **argv)
 #endif
 #endif
 #if defined(PW_RUNTIME_B1) && defined(PW_PARENT_ROLE) && !PW_RUNTIME_GPU
+    /* AnoCore fork: the Battle.net installer path stays compiled in but is
+     * switched off. The game role is the only start; a missing client is
+     * reported by the direct-game gate above instead of downloading Battle.net. */
+#ifndef PW_RUNTIME_INSTALLER_ENABLED
+#define PW_RUNTIME_INSTALLER_ENABLED 0
+#endif
     int installer = 0;
     struct stat startup_file;
-    installer = !forever_prefix_init && stat(PW_RUNTIME_LAUNCHER_UNIX, &startup_file) != 0;
+    installer = PW_RUNTIME_INSTALLER_ENABLED &&
+                !forever_prefix_init && stat(PW_RUNTIME_LAUNCHER_UNIX, &startup_file) != 0;
     if (installer && stat(PW_RUNTIME_INSTALLER_UNIX, &startup_file) && b1_download_installer())
         b1_wait();
 #if !PW_RUNTIME_HEADLESS
@@ -3478,6 +3637,7 @@ int main(int argc, char **argv)
            parent_argc - 1, PW_RUNTIME_ROOT, PW_RUNTIME_HEADLESS);
     pw_title_log_begin();
     pw_prefetch_hosts();
+    pw_anocore_server_check_async(cwd);
     result=wine_public_title_main(parent_argc,args);
 #else
     char *args[]=PW_RUNTIME_PARENT_ARGV;

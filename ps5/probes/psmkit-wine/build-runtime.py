@@ -572,6 +572,8 @@ if args.profile == 'b1':
     profile_defines += '#define PW_RUNTIME_DNS_UPSTREAMS {' + (','.join(
         '0x%08xu' % int.from_bytes(bytes(int(part) for part in server.split('.')), 'big')
         for server in selected['dns_upstreams']) or '0') + '}\n'
+    profile_defines += '#define PW_RUNTIME_DEFAULT_CHANNEL ' + json.dumps(
+        selected.get('default_channel', '')) + '\n'
     profile_defines += '#define PW_RUNTIME_PAYLOAD_DLL_OVERRIDES ' + json.dumps(selected['payload_dll_overrides']) + '\n'
     profile_defines += '#define PW_RUNTIME_BROWSER_SWITCHES ' + json.dumps(';'.join(
         program + ' ' + ' '.join(switches) for program, switches in selected['browser_switches'].items())) + '\n'
@@ -750,6 +752,19 @@ if args.profile == 'b1':
             'a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505'):
         raise SystemExit(f'pinned certificate bundle digest mismatch: {cacert}')
     shutil.copy2(cacert, tree / 'share/wine/cacert.pem')
+    # AnoCore fork: trust the private server's root CA for its TLS realm
+    # (192-168-0-211.anocore.test) in addition to Mozilla's bundle.
+    anocore_ca = here / 'anocore-root-ca.pem'
+    if anocore_ca.is_file():
+        pem = anocore_ca.read_text(encoding='ascii')
+        if (pem.count('-----BEGIN CERTIFICATE-----') != 1 or
+                pem.count('-----END CERTIFICATE-----') != 1):
+            raise SystemExit(f'bad PEM, exactly one certificate expected: {anocore_ca}')
+        with (tree / 'share/wine/cacert.pem').open('a', encoding='ascii') as bundle:
+            bundle.write('\n# AnoCore private-server root CA (anocore-root-ca.pem)\n')
+            if not pem.endswith('\n'):
+                pem += '\n'
+            bundle.write(pem)
     # The console has no system fonts: the same pinned fallback faces (CJK,
     # Thai, right-to-left) and notices ps5/stage-wine.sh gives payload Wine.
     droid = 'https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/android-4.4.4_r2/data/fonts'
