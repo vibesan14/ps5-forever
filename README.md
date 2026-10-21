@@ -25,13 +25,16 @@ What the fork changes:
   It is log-only and never delays or blocks the start.
 - **Identity.** `param.json` shows `AnoCore Launcher`, version `01.000.100`.
 
-Building it stays the same as upstream: fork this repository on GitHub, point
-the repository's GitHub Actions runner (self-hosted Linux with the PS5 toolchain)
-at it, then push the tag `01.000.100` (the release workflow takes the version
-from `ps5/title/sce_sys/param.json`, builds `eboot.bin` + `game.bin`, and
-attaches `PPSA99030.zip` to the release). Install it the same way Forever
-Launcher installs, with WoW Forever Beta in `/data/homebrew/PPSA99030` (see the
-upstream *What you need* section).
+Building it stays the same as upstream, but on a **Windows** host: fork this
+repository on GitHub, set up **Docker Desktop** (Windows app, Hyper-V backend on
+Windows 11 Pro) and a GitHub Actions self-hosted runner on the same machine
+(default labels `self-hosted, Windows, X64`), then push the tag `01.000.100`
+(the release workflow takes the version from `ps5/title/sce_sys/param.json`,
+builds `eboot.bin` + `game.bin` inside the pinned Ubuntu container from
+`ps5/release/Dockerfile`, and attaches `PPSA99030.zip` to the release). The
+runner needs at least 30 GiB of free disk; keep the machine online while the
+build runs. Install it the same way Forever Launcher installs, with WoW Forever
+Beta in `/data/homebrew/PPSA99030` (see the upstream *What you need* section).
 
 ---
 

@@ -26,8 +26,11 @@ concurrency:
 
 jobs:
   build:
-    runs-on: [self-hosted, Linux, X64]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 360
+    defaults:
+      run:
+        shell: bash
     env:
       SOURCE_ROOT: ${{ github.workspace }}/sources
       PRODUCT: ${{ github.workspace }}/sources/ps5-proton/ps5-wow
@@ -42,9 +45,9 @@ jobs:
       - name: Check build disk
         run: |
           # Never remove preinstalled tools from a persistent self-hosted machine.
-          python3 -c 'import os, shutil; free = shutil.disk_usage(os.environ["GITHUB_WORKSPACE"]).free; print(f"Build disk available: {free // (1 << 30)} GiB"); assert free >= 30 << 30, "release build requires at least 30 GiB free"'
+          python -c 'import os, shutil; free = shutil.disk_usage(os.environ["GITHUB_WORKSPACE"]).free; print(f"Build disk available: {free // (1 << 30)} GiB"); assert free >= 30 << 30, "release build requires at least 30 GiB free"'
       - name: Check out pinned public sources
-        run: python3 "$PRODUCT/ps5/release/fetch-sources.py" "$SOURCE_ROOT"
+        run: python "$PRODUCT/ps5/release/fetch-sources.py" "$SOURCE_ROOT"
       - name: Build and qualify both title roles in the pinned container
         env:
           JOBS: ${{ vars.FOREVER_JOBS }}
@@ -52,7 +55,7 @@ jobs:
       - name: Verify archive and write its catalog digest
         working-directory: sources/ps5-proton/ps5-wow/ps5/build/release
         run: |
-          python3 -m zipfile --test PPSA99030.zip
+          python -m zipfile --test PPSA99030.zip
           sha256sum PPSA99030.zip > PPSA99030.zip.sha256
       - name: Retain the exact release bytes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
