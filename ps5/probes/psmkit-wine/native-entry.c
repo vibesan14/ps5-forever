@@ -13,6 +13,7 @@
 #include "title-log.h"
 #include "forever-paths.h"
 #include "forever-setup.h"
+#include "anocore-server.h"
 #include "forever-menu-settings.h"
 #include "../../title/addonforge-client.h"
 #include "../../title/addonforge-security.h"
@@ -1141,6 +1142,22 @@ static int pw_dns_internal_name(const char *name)
 static const char *pw_dns_internal(const char *name, uint32_t *address)
 {
     uint32_t ttl;
+    /* AnoCore's server name, in place of the hosts-file line the PC edition
+     * adds: no DNS server owns a .test name and the console has no hosts
+     * file, so the launcher kits its own mapping. The title's own reachability
+     * probe (pw_anocore_server_check) resolves through this chain, so one
+     * entry serves the probe and every title-side lookup. */
+    if (address && !strcasecmp(name, ANOCORE_SERVER_NAME))
+    {
+        unsigned a, b, c, d;
+        if (sscanf(ANOCORE_SERVER_ADDRESS, "%3u.%3u.%3u.%3u", &a, &b, &c, &d) == 4 &&
+            a <= 255 && b <= 255 && c <= 255 && d <= 255)
+        {
+            *address = (a << 24) | (b << 16) | (c << 8) | d;
+            pw_dns_cache_put(name, *address, 60);
+            return "kit";
+        }
+    }
     if (!sizeof(pw_dns_upstreams) || !pw_dns_upstreams[0] || !pw_dns_internal_name(name)) return NULL;
     if (pw_dns_cache_get(name, address)) return "cache";
     for (unsigned int i = 0; i < sizeof(pw_dns_upstreams) / sizeof(pw_dns_upstreams[0]); ++i)
@@ -2063,6 +2080,10 @@ static int pw_forever_start(void)
             forever_say(message);
             return -1;
         }
+        /* The registries are fresh and tiny: exact place to sew the server's
+         * trust in, before wineboot ever reads them. forever_cert_sew fails
+         * soft (the game reports its own error while untrusted) and idempotently. */
+        io_log("forever: server trust result=%d", forever_cert_sew(FOREVER_PREFIX));
         forever_prefix_init = 1;
         forever_say("First start: setting up the Windows files.\n"
                     "This takes a few minutes. Forever Launcher restarts by itself when it is done.");
@@ -2137,6 +2158,9 @@ static int pw_forever_start(void)
         forever_say(message);
         return -1;
     }
+    /* Same trust sew for a migrated or already-initialized prefix; the marker
+     * makes later starts skip every registry read and write. */
+    io_log("forever: server trust result=%d", forever_cert_sew(FOREVER_PREFIX));
 #if !PW_RUNTIME_GPU
     b1_message("");
 #endif

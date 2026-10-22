@@ -37,7 +37,10 @@ b1 = profile('b1')
 p1w = profile('p1w')
 product = json.loads(Path(__file__).with_name('b1-product.json').read_text())
 assert product['debug'] == 'err+all,err-seh'
-assert product['argv'] == [r'C:\Forever\Addons\forever-maintenance.exe']
+assert product['argv'] == [r'C:\AnoCore\WoW-Forever-Permanent-Launcher\ForeverPermanentLauncher.exe']
+assert product['default_channel'] == '' and product['prefetch_hosts'] == []
+assert product['browser_switches'] == {}
+assert product['cwd'] == '/data/anocore/prefix/drive_c/AnoCore/WoW-Forever-Permanent-Launcher'
 game_config = json.loads(Path(__file__).with_name('b1-game-wow.json').read_text())
 maintenance = profile('b1', product)
 assert maintenance['refused_programs'] == []
