@@ -445,10 +445,21 @@ for path in sorted(set(paths)):
         # FSYNC_USED_BY_SERVER definition are absent there), which breaks
         # every Unix-side server.c compile. tools/make_requests regenerates
         # them from the pinned protocol.def right after each reset, before
-        # any stage validates or builds.
+        # any stage validates or builds. The regenerated files stay dirty in
+        # the worktree, so mark them assume-unchanged: git status (and the
+        # source fingerprint checks) then keep treating the tree as pristine
+        # while compilers read the complete headers.
         subprocess.run(['perl', str(repo / 'tools' / 'make_requests')],
                        cwd=str(repo), check=True)
-        print(f'REGENERATED {path}: wine protocol headers')
+        status = subprocess.run(
+            ['git', 'status', '--porcelain', '--untracked-files=no'],
+            cwd=str(repo), capture_output=True, text=True, check=True).stdout
+        dirty = [line[3:].strip() for line in status.splitlines() if line.strip()]
+        if dirty:
+            subprocess.run(['git', 'update-index', '--assume-unchanged', *dirty],
+                           cwd=str(repo), check=True)
+        print(f'REGENERATED {path}: wine protocol headers '
+              f'(assume-unchanged: {", ".join(dirty) if dirty else "none"})')
 PY
 }
 # Upstream pinned blobs contain CRLF endings (e.g. PS5_Vulkan's
