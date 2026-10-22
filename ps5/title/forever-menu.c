@@ -904,7 +904,7 @@ void forever_menu_render(const struct forever_menu_state *menu, char *text, size
     if (menu->page == FOREVER_MENU_MAIN)
     {
         snprintf(text, size,
-                 " Forever Launcher\n"
+                 " AnoCore \xe2\x80\x94 192-168-0-211.anocore.test\n"
                  " ---------------------------------------------\n"
                  "%s Frame generation\t%s\n"
                  "%s HDR\t%s\n"
@@ -995,6 +995,6 @@ void forever_menu_render(const struct forever_menu_state *menu, char *text, size
                  mark(!menu->confirmation_selected), mark(menu->confirmation_selected));
         return;
     }
-    snprintf(text, size, " Forever Launcher\n ---------------------------------------------\n\n %s",
+    snprintf(text, size, " AnoCore\n ---------------------------------------------\n\n %s",
              menu->status);
 }
