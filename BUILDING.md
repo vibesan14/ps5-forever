@@ -1,4 +1,4 @@
-# Building Forever Launcher on Linux
+# Building this repository (AnoCore Launcher) on Linux
 
 Use an x86-64 Linux host with Docker and a fresh, writable source directory.
 No console, shared SDK, remote RADV build, prefix, installed game, or Mac build
@@ -43,6 +43,13 @@ From `ps5-wow`:
 JOBS=8 bash ps5/release/build-linux.sh /absolute/SOURCE_ROOT 01.000.014
 ```
 
+The kit mount: `build-linux.sh` binds the AnoCore player kit read-only from
+the build host (`FOREVER_ANOCORE_KIT_DIR`, by default
+`C:/AnoCore-Server/player-launcher/AnoWoW-Launcher`) into the container as
+`/anocore-kit`, and the build refuses to run without it: the kit's
+`server-root.cer` must verify against the generated `anocore-server.h`
+before it is staged inside the title.
+
 Source validation and the full host suite run before the SDK and runtime builds.
 
 The tag must equal the source `sce_sys/param.json` content version. This builds
@@ -55,7 +62,7 @@ for a cold build; rerunning can reuse outputs.
 Outputs under `ps5-wow/ps5/build/`:
 
 - `title-psmkit-wine-b1/`: independently qualified maintenance and game roles.
-- `release/PPSA99030.zip`: catalog archive, with size and SHA-256 in the output.
+- `release/PPSA99130.zip`: catalog archive, with size and SHA-256 in the output.
 - `release/logs/`: complete per-stage logs and `timings.tsv` (seconds/status).
 
 ### Persistent release-build cache
@@ -573,7 +580,7 @@ checks, bounds/pressure/kill-switch cases and failed reclaim/reopen ownership.
 ## Native release gate
 
 Before publishing the corrected release or promoting its catalog entry, install
-the exact final `PPSA99030.zip` on the PS5. Repeat the unchanged raw drive probe
+the exact final `PPSA99130.zip` on the PS5. Repeat the unchanged raw drive probe
 in both 32-bit and 64-bit modes, then run Wine's opt-in, read-only regression
 `kernel32_test.exe volume ps5-title-drives` in both architectures. Require only
 `C:`/`W:` in drive enumeration, local fixed-disk device information for both

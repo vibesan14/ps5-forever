@@ -116,7 +116,8 @@ def main():
         if source.name in {'PS5_Vulkan', 'PS5_Mesa', 'PS5_PayloadSDK'}:
             (destination / 'README.md').write_text(
                 f'# {name}\n\n'
-                f'Source snapshot used by [Forever Launcher](https://github.com/bizkut/ps5-forever).\n'
+                f'Source snapshot used by [AnoCore Launcher](https://github.com/vibesan14/ps5-forever),\n'
+                f'a fork of [Forever Launcher](https://github.com/bizkut/ps5-forever).\n'
                 f'Original source revision: `{original}`.\n\n'
                 'Build instructions and dependency pins are in the launcher repository. '
                 'Private development history and console evidence are not included.\n\n'

@@ -93,6 +93,6 @@ jobs:
           cd ..
           python3 -c 'from pathlib import Path; text = Path("ps5/release/catalog-notes.md").read_text(); marker = "## Release notes (GitHub release description, shown by the catalog)"; Path("release-artifact/notes.md").write_text(text.split(marker, 1)[1].strip() + "\n")'
           gh release create "$RELEASE_TAG" --verify-tag --prerelease \
-            --title "Forever Launcher $RELEASE_TAG" \
+            --title "AnoCore Launcher $RELEASE_TAG" \
             --notes-file release-artifact/notes.md \
             release-artifact/PPSA99130.zip release-artifact/PPSA99130.zip.sha256

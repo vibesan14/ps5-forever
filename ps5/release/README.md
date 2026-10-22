@@ -1,3 +1,33 @@
+# AnoCore Launcher
+
+AnoCore Launcher is a fork of **Forever Launcher** (`ps5-forever`, GPL-3.0)
+shipped as its **own title**: this fork is `PPSA99130` with the data root
+`/data/anocore`, while the original stays `PPSA99030` with `/data/forever`.
+
+- **No Battle.net, ever.** The Battle.net installer path is compiled off, and
+  the game is reached only **through the embedded AnoCore server launcher**
+  (`ForeverPermanentLauncher.exe`, installed into the prefix at
+  `drive_c\AnoCore` from the bundled kit).
+- **The private realm's identity is preinstalled:** TLS trust for
+  `server-root.cer` is sewn into the Wine registry stores before any Wine
+  boot, and `192-168-0-211.anocore.test` (`192.168.0.211`) is answered
+  without a hosts file; `Config.wtf` points at the realm name out of the box.
+- **No default channel.** An unavailable channel shows a notice on screen and
+  never falls back to a download or to Battle.net.
+- **Install:** unzip `PPSA99130.zip`, copy the `PPSA99130` folder where
+  ShadowMountPlus scans it (typically `/data/homebrew/PPSA99130`), register
+  and start **AnoCore Launcher**; games and settings live in `/data/anocore`
+  and the original launcher's `/data/forever` stays untouched.
+
+Keep the player kit on the build machine at
+`C:\AnoCore-Server\player-launcher\AnoWoW-Launcher` (`FOREVER_ANOCORE_KIT_DIR`
+overrides); the build verifies it against the generated constants and stages
+it inside the title. See [BUILDING.md](BUILDING.md). Everything below this
+line is the **original Forever Launcher's own documentation** and talks about
+its `PPSA99030` build and `/data/forever` data root.
+
+---
+
 # Forever Launcher
 
 Run **Battle.net** on a jailbroken **PlayStation 5**.

@@ -1,40 +1,70 @@
 # AnoCore Launcher
 
-AnoCore Launcher is a fork of **Forever Launcher** (`ps5-forever`, GPL-3.0) that
-never starts Battle.net. The same title (`PPSA99030`) becomes a direct game
-starter: on every launch it picks the `_classic_beta_` WoW channel, hands the
-client (`WowB.exe -launcherlogin -uid wow_classic_beta`) straight to the game
-parent, and the client connects to the private **AnoCore** realm instead of
-Blizzard's servers.
+AnoCore Launcher is a fork of **Forever Launcher** (`ps5-forever`, GPL-3.0)
+shipped as its **own title** (`PPSA99030` stays the original; this fork is
+`PPSA99130`) with its own data root (`/data/anocore`, user data
+`/data/anocore/home` and the Wine prefix `/data/anocore/prefix`). Installing
+this fork never replaces or disturbs the original Forever Launcher.
 
-What the fork changes:
+The title never starts Battle.net. The stock Battle.net installer path stays
+compiled in but is switched off (`PW_RUNTIME_INSTALLER_ENABLED 0`), and the
+game is only ever reached **through the player's own server launcher**: the
+release embeds the AnoCore launcher kit under the prefix at `drive_c\AnoCore`
+(bundled `ForeverPermanentLauncher.exe` plus the PC-side helpers such as
+`Trust-Server-Certificate.cmd`), and `b1-product.json` starts that launcher on
+every boot. It holds the game start, so the game starts through the launcher,
+never directly.
 
-- **No Battle.net, ever.** The stock Battle.net installer path stays compiled in
-  but is switched off (`PW_RUNTIME_INSTALLER_ENABLED 0`): a missing channel
-  client shows a on-screen notice, it never downloads a launcher.
-- **Default channel.** `b1-product.json` sets `"default_channel":
-  "_classic_beta_"`. The one-shot `/app0/wine/direct-game` flag file still
-  exists for an explicit selector, but with no flag the app starts the modified
-  defaults' channel on its own (`PS5/release/defaults/Config.wtf`).
-- **Trust for the private realm's TLS.** `ps5/probes/psmkit-wine/anocore-root-ca.pem`
-  is the realm's root CA; `build-runtime.py` appends it to the title's
-  `share/wine/cacert.pem` alongside Mozilla's bundle.
-- **Server check in the log.** When the game starts, a detached thread resolves
-  the client's `WTF/Config.wtf` `SET portal` name and TCP-connects the login
-  bridge (1119) and world (8085) ports, then logs the result to the kernel log.
-  It is log-only and never delays or blocks the start.
-- **Identity.** `param.json` shows `AnoCore Launcher`, version `01.000.100`.
+The private server's realm is `192-168-0-211.anocore.test`:
 
-Building it stays the same as upstream, but on a **Windows** host: fork this
-repository on GitHub, set up **Docker Desktop** (Windows app, Hyper-V backend on
-Windows 11 Pro) and a GitHub Actions self-hosted runner on the same machine
-(default labels `self-hosted, Windows, X64`), then push the tag `01.000.100`
-(the release workflow takes the version from `ps5/title/sce_sys/param.json`,
-builds `eboot.bin` + `game.bin` inside the pinned Ubuntu container from
-`ps5/release/Dockerfile`, and attaches `PPSA99030.zip` to the release). The
-runner needs at least 30 GiB of free disk; keep the machine online while the
-build runs. Install it the same way Forever Launcher installs, with WoW Forever
-Beta in `/data/homebrew/PPSA99030` (see the upstream *What you need* section).
+- **TLS trust is preinstalled.** The kit's `server-root.cer` is verified
+  against the generated constant (`anocore-server.h`, SHA-1 thumbprint
+  `7F8FA4573923D1F5DE5A0019E7CC88E18CC46AA0`) at build time and is sewn
+  into the Wine registry certificate stores (`user.reg`/`system.reg`)
+  before any Wine boot — the PC's `Trust-Server-Certificate.cmd` step is
+  never needed on the console.
+- **The server name resolves without a hosts file.** Both the title side
+  (`pw_dns_internal`) and the Wine payload side (`ws2_32`) answer
+  `192-168-0-211.anocore.test` with `192.168.0.211` directly.
+- **The realm name is preseeded.** `ps5/release/defaults/Config.wtf` sets
+  `SET portal "192-168-0-211.anocore.test"`, so the WoW client connects to the
+  private realm.
+- **No default channel.** `b1-product.json` sets an empty default channel;
+  when a channel is unavailable the title shows a notice on screen and never
+  falls back to a download or to Battle.net.
+- **Start screen.** The Options menu header reads `AnoCore —
+  192-168-0-211.anocore.test`.
+- **Server check in the log.** On start a detached thread resolves the client's
+  `SET portal` name and TCP-connects the login bridge (1119) and world (8085)
+  ports, then logs the result to the kernel log. It is log-only and never
+  delays or blocks the start.
+
+The menu's Add-ons page works only with the app that used to own its control
+port (the original launcher's maintenance program): under this fork that page
+reports an on-screen error instead. Everything else in the Forever menu (frame
+generation, HDR, overlay) behaves the same.
+
+**Install:** unzip `PPSA99130.zip` from the release and copy the `PPSA99130`
+folder where ShadowMountPlus scans it (typically `/data/homebrew/PPSA99130`),
+then register and start **AnoCore Launcher**. Games and settings live in
+`/data/anocore`; nothing touches the original launcher's `/data/forever`.
+World of Warcraft itself is expected in
+`/data/anocore/prefix/drive_c/Program Files (x86)/World of Warcraft` (copy a
+PC install over FTP — the app fixes the copied folders' permissions).
+
+Building stays the upstream flow, but on a **Windows** host: fork this
+repository on GitHub, set up **Docker Desktop** (Windows app, Hyper-V backend
+on Windows 11 Pro) and a GitHub Actions self-hosted runner on the same machine
+(labels `self-hosted, Windows, X64`, repo variable `FOREVER_JOBS=2` for a
+16 GiB machine). Keep the player kit on the build machine at
+`C:\AnoCore-Server\player-launcher\AnoWoW-Launcher` (`FOREVER_ANOCORE_KIT_DIR`
+overrides the path); the build refuses to run without it and stages the kit
+inside the title. Then push the tag matching `ps5/title/sce_sys/param.json`
+(`01.000.100` now): the release workflow builds `eboot.bin` + `game.bin`
+inside the pinned Ubuntu container from `ps5/release/Dockerfile` and attaches
+`PPSA99130.zip` to the release. See [BUILDING.md](BUILDING.md); everything
+below this point is the **original Forever Launcher's own documentation** and
+talks about its `PPSA99030` build and `/data/forever` data root.
 
 ---
 
