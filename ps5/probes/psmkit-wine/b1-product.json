@@ -1,8 +1,8 @@
 {
   "argv": ["C:\\Forever\\Addons\\forever-maintenance.exe"],
-  "prefix": "/data/forever/prefix",
-  "home": "/data/forever/home",
-  "cwd": "/data/forever/prefix/drive_c/Program Files (x86)/Battle.net",
+  "prefix": "/data/anocore/prefix",
+  "home": "/data/anocore/home",
+  "cwd": "/data/anocore/prefix/drive_c/Program Files (x86)/Battle.net",
   "debug": "err+all,err-seh",
   "dll_overrides": "winemenubuilder.exe=d;mscoree=d;mshtml=d;winedbg.exe=d;msv1_0=d;kerberos=d;tabtip.exe=d;vulkan-1=n,b;d3d8,d3d9,d3d10core,d3d11,dxgi=b",
   "payload_programs": [],

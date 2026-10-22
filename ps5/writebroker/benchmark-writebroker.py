@@ -44,7 +44,7 @@ import threading
 import time
 import uuid
 
-SCRATCH = '/data/forever/prefix/drive_c/scratch-bench'
+SCRATCH = '/data/anocore/prefix/drive_c/scratch-bench'
 GIB = 1 << 30
 
 

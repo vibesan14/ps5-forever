@@ -428,7 +428,7 @@ static pthread_cond_t forever_menu_lifetime_changed = PTHREAD_COND_INITIALIZER;
 static int forever_menu_operation;
 static atomic_int forever_menu_relaunch_pending;
 #endif
-/* This start found no initialized Wine prefix in /data/forever: it runs
+/* This start found no initialized Wine prefix in /data/anocore: it runs
  * wineboot -i instead of Battle.net, then restarts the app. */
 static int forever_prefix_init;
 static void forever_say(const char *text);
@@ -1926,15 +1926,20 @@ static int pw_forever_sync_managed(void)
     return result;
 }
 
-/* Every start, before Wine: put the user's data in /data/forever (moving an
+/* Every start, before Wine: put the user's data in /data/anocore (moving an
  * older in-app prefix there once), write default settings files the user does
  * not have yet, bring the prefix files the app owns up to this version, and
  * install WoW's preset Config.wtf once. 0 to continue, -1 to stop. */
 static int pw_forever_start(void)
 {
+    /* AnoCore keeps its data in /data/anocore. These are the roots earlier
+     * AnoCore builds used, most recent first: /data/forever was this fork's
+     * root while it still shipped as PPSA99030, and the in-app prefix is the
+     * even older layout. The original Forever Launcher's own app folder is
+     * deliberately absent: its data is not ours to move. */
     static const char *const legacy[] = {
-        "/data/homebrew/PPSA99030/wine",
-        "/data/prosperostore/previous/PPSA99030/wine",
+        "/data/forever",
+        "/data/homebrew/PPSA99130/wine",
     };
     static const char *const directories[] = { FOREVER_PREFIX, FOREVER_HOME, FOREVER_SHADER_CACHE };
     static const char *const defaults[][2] = {

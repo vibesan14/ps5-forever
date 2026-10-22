@@ -1,4 +1,4 @@
-/* The Wine launcher title, PPSA99030. It owns the TV and input; the Wine
+/* The Wine launcher title, PPSA99130. It owns the TV and input; the Wine
  * payload owns the windows and publishes their surfaces through its hub. */
 #include <errno.h>
 #include <fcntl.h>
@@ -59,8 +59,8 @@ int forever_title_menu_load(struct forever_menu_values *);
 int forever_title_addons_action(enum forever_menu_command, unsigned,
                                 enum forever_addon_tab, const char *);
 #ifdef FOREVER_MENU_DIAG
-#define MENU_DIAG_SCRIPT "/data/homebrew/PPSA99030/wine/menu-script.txt"
-#define MENU_DIAG_DONE "/data/homebrew/PPSA99030/wine/menu-script.done"
+#define MENU_DIAG_SCRIPT "/data/homebrew/PPSA99130/wine/menu-script.txt"
+#define MENU_DIAG_DONE "/data/homebrew/PPSA99130/wine/menu-script.done"
 static struct
 {
     char script[4096], dump_name[49];
@@ -773,7 +773,7 @@ static void menu_diag_step(uint64_t now)
 
 static void menu_diag_dump(void)
 {
-    static const char root[] = "/data/homebrew/PPSA99030/wine/menu-";
+    static const char root[] = "/data/homebrew/PPSA99130/wine/menu-";
     char path[256], temporary[272], hex[65];
     uint8_t digest[32];
     const void *pixels = display_image();

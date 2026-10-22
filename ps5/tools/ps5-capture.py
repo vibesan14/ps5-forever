@@ -18,7 +18,7 @@ from PIL import Image
 
 HOST = os.environ.get("PS5_HOST", "10.0.1.41")
 FTP_PORT = int(os.environ.get("FTP_PORT", "2121"))
-REMOTE_DIR = "/data/homebrew/PPSA99030/wine"
+REMOTE_DIR = "/data/homebrew/PPSA99130/wine"
 REQUEST_PATH = f"{REMOTE_DIR}/radv-capture.req"
 CAPTURE_RE = re.compile(r"^radv-capture-(\d+)\.bin$")
 MAGIC = b"PS5CAP1\0"

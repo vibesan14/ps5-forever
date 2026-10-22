@@ -789,7 +789,7 @@ if args.profile == 'b1':
         if hashlib.sha256(cache.read_bytes()).hexdigest() != digest:
             raise SystemExit(f'pinned font asset digest mismatch: {cache}')
         shutil.copy2(cache, tree / 'share/wine/fonts' / name)
-    # Forever Launcher keeps the user's prefix in /data/forever. forever-setup.h
+    # Forever Launcher keeps the user's prefix in /data/anocore. forever-setup.h
     # installs these first-start defaults and copies the prefix files the app
     # owns whenever this list (source, prefix path, digest) changes.
     forever = tree / 'share/forever'

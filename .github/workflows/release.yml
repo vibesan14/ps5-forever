@@ -55,15 +55,15 @@ jobs:
       - name: Verify archive and write its catalog digest
         working-directory: sources/ps5-proton/ps5-wow/ps5/build/release
         run: |
-          python -m zipfile --test PPSA99030.zip
-          sha256sum PPSA99030.zip > PPSA99030.zip.sha256
+          python -m zipfile --test PPSA99130.zip
+          sha256sum PPSA99130.zip > PPSA99130.zip.sha256
       - name: Retain the exact release bytes
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: forever-${{ env.RELEASE_TAG }}
           path: |
-            sources/ps5-proton/ps5-wow/ps5/build/release/PPSA99030.zip
-            sources/ps5-proton/ps5-wow/ps5/build/release/PPSA99030.zip.sha256
+            sources/ps5-proton/ps5-wow/ps5/build/release/PPSA99130.zip
+            sources/ps5-proton/ps5-wow/ps5/build/release/PPSA99130.zip.sha256
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -89,10 +89,10 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
           cd release-artifact
-          sha256sum --check PPSA99030.zip.sha256
+          sha256sum --check PPSA99130.zip.sha256
           cd ..
           python3 -c 'from pathlib import Path; text = Path("ps5/release/catalog-notes.md").read_text(); marker = "## Release notes (GitHub release description, shown by the catalog)"; Path("release-artifact/notes.md").write_text(text.split(marker, 1)[1].strip() + "\n")'
           gh release create "$RELEASE_TAG" --verify-tag --prerelease \
             --title "Forever Launcher $RELEASE_TAG" \
             --notes-file release-artifact/notes.md \
-            release-artifact/PPSA99030.zip release-artifact/PPSA99030.zip.sha256
+            release-artifact/PPSA99130.zip release-artifact/PPSA99130.zip.sha256

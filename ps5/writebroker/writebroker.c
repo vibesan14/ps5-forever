@@ -582,14 +582,14 @@ static int repair_all(struct wb_permission_repair *repair)
         const char *relative;
         int recursive;
     } roots[] = {
-        {"forever", 0},
-        {"forever/prefix", 1},
-        {"forever/home", 1},
-        {"forever/radv-shader-cache", 1},
-        {"homebrew/PPSA99030", 0},
-        {"homebrew/PPSA99030/wine", 1},
-        {"prosperostore/previous/PPSA99030", 0},
-        {"prosperostore/previous/PPSA99030/wine", 1},
+        {"anocore", 0},
+        {"anocore/prefix", 1},
+        {"anocore/home", 1},
+        {"anocore/radv-shader-cache", 1},
+        {"homebrew/PPSA99130", 0},
+        {"homebrew/PPSA99130/wine", 1},
+        {"prosperostore/previous/PPSA99130", 0},
+        {"prosperostore/previous/PPSA99130/wine", 1},
     };
     int data_fd = repair_open_data_root(&repair->device);
 
@@ -841,7 +841,7 @@ done:
 /* Known limitation retained from the original protocol: the token is 0644 in
  * the normally 0777 user-data directory. It authenticates cooperative title
  * clients but is not secret from other local identities that can traverse
- * /data/forever; changing the credential scheme is outside this repair. */
+ * /data/anocore; changing the credential scheme is outside this repair. */
 static int write_token(void)
 {
     static const char name[] = WB_TOKEN_FILE, temporary[] = WB_TOKEN_FILE ".new";

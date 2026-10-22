@@ -47,8 +47,8 @@ game = profile('b1', game_config)
 assert 'argv' not in game_config and 'cwd' not in game_config
 assert game['argv'] == [game['loader']]
 assert game['cwd'] is None and game['runtime_game'] is True
-assert game['prefix'] == '/data/forever/prefix'
-assert game['home'] == '/data/forever/home'
+assert game['prefix'] == '/data/anocore/prefix'
+assert game['home'] == '/data/anocore/home'
 assert game['gpu'] is True and game['headless'] is True
 assert game['refused_programs'] == ['BlizzardError.exe']
 assert game['environment'] == {'PROTON_ENABLE_HDR': '1'}
@@ -382,7 +382,7 @@ with tempfile.TemporaryDirectory(prefix='pw-b1-profile-') as temporary:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'\x7fELFhost-test' if relative == WRITEBROKER_RELATIVE else relative.encode())
     manifest = runtime_tree_manifest(root, b1)
-    assert manifest['remote_root'] == '/data/homebrew/PPSA99030/wine-title'
+    assert manifest['remote_root'] == '/data/homebrew/PPSA99130/wine-title'
     assert manifest['pe_dll_counts'] == {'i386': 1, 'x86_64': 1}
     assert manifest['files']['share/wine/nls/locale.nls']['sha256'] == hashlib.sha256(
         b'share/wine/nls/locale.nls').hexdigest()
@@ -399,11 +399,11 @@ with tempfile.TemporaryDirectory(prefix='pw-b1-profile-') as temporary:
         path = folder / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(b'published')
-    guards = b1_guard_paths(folder, '/data/homebrew/PPSA99030')
-    assert '/data/homebrew/PPSA99030/wine/boot.txt' in guards
-    assert '/data/homebrew/PPSA99030/assets/icon0.png' in guards
-    assert '/data/homebrew/PPSA99030/.upload-eboot.bin' in guards
-    assert '/data/homebrew/PPSA99030/sce_sys/.upload-param.json' in guards
+    guards = b1_guard_paths(folder, '/data/homebrew/PPSA99130')
+    assert '/data/homebrew/PPSA99130/wine/boot.txt' in guards
+    assert '/data/homebrew/PPSA99130/assets/icon0.png' in guards
+    assert '/data/homebrew/PPSA99130/.upload-eboot.bin' in guards
+    assert '/data/homebrew/PPSA99130/sce_sys/.upload-param.json' in guards
     assert not any('/wine/lib/wine/' in path or '/wine-title/' in path for path in guards)
     (root / 'title-root-manifest.json').write_text(json.dumps(manifest, sort_keys=True))
     shutil.copytree(root, folder / 'wine-title')
@@ -495,7 +495,7 @@ with tempfile.TemporaryDirectory(prefix='pw-b1-profile-') as temporary:
     try:
         (folder / 'wine').mkdir()
         (folder / 'wine/bad.dll').write_bytes(b'bad')
-        b1_guard_paths(folder, '/data/homebrew/PPSA99030')
+        b1_guard_paths(folder, '/data/homebrew/PPSA99130')
     except ValueError:
         pass
     else:

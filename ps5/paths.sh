@@ -13,5 +13,5 @@
 # A change here needs ps5/build-wine.sh configure, a full build, a FreeType
 # rebuild and a stage. Read by ps5/build-wine.sh, ps5/build-freetype.sh,
 # ps5/stage-wine.sh and ps5/deploy-wine.py.
-TITLE_ID=PPSA99030
+TITLE_ID=PPSA99130
 WINE_ROOT=/data/homebrew/$TITLE_ID/wine

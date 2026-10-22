@@ -233,7 +233,7 @@ static void protocol_tests(void)
         {.magic = WB_STATFS_MAGIC, .path_length = 1, .reserved = 1},
     };
     static const char *const refused[] = {
-        "/tmp/outside", WB_USER_ROOT "../outside", "/data/forever-other/space", WB_USER_ROOT,
+        "/tmp/outside", WB_USER_ROOT "../outside", "/data/anocore-other/space", WB_USER_ROOT,
     };
     int fd = connection();
     {
@@ -389,11 +389,11 @@ static void permission_repair_tests(void)
     snprintf(hardlinked, sizeof(hardlinked), "%s/hardlinked", prefix);
     snprintf(hardlink_outside, sizeof(hardlink_outside), "%s/hardlink-outside", repair_data_root);
     snprintf(other_device, sizeof(other_device), "%s/other-device", prefix);
-    snprintf(legacy_parent, sizeof(legacy_parent), "%s/homebrew/PPSA99030", repair_data_root);
+    snprintf(legacy_parent, sizeof(legacy_parent), "%s/homebrew/PPSA99130", repair_data_root);
     snprintf(legacy_root, sizeof(legacy_root), "%s/wine", legacy_parent);
     snprintf(legacy_file, sizeof(legacy_file), "%s/prefix/system.reg", legacy_root);
     snprintf(sibling, sizeof(sibling), "%s/app-file", legacy_parent);
-    snprintf(store_parent, sizeof(store_parent), "%s/prosperostore/previous/PPSA99030",
+    snprintf(store_parent, sizeof(store_parent), "%s/prosperostore/previous/PPSA99130",
              repair_data_root);
     snprintf(store_root, sizeof(store_root), "%s/wine", store_parent);
     snprintf(store_file, sizeof(store_file), "%s/home/settings", store_root);

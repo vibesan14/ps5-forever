@@ -8,11 +8,11 @@
   "sources": [
     {
       "name": "ps5-wine",
-      "url": "https://github.com/bizkut/ps5-forever-wine.git",
-      "commit": "183b6b587f0baccf383f948805337154d4aa5727",
+      "url": "https://github.com/vibesan14/ps5-forever-wine.git",
+      "commit": "ed2b4276ca2f70c7d32e1806a7aab24c6a258562",
       "original_commit": "183b6b587f0baccf383f948805337154d4aa5727",
-      "content_sha256": "5716b75cf7a0784e37a1cc38bca0f49084251e3c38eb63be8e52b1988b94c2d0",
-      "describe": "wine-8.0-21023-forever-01.000.014",
+      "content_sha256": "58bb7b1350026fda9d6c45ffa8ead57d22c2698be00762c46d9dd70145fc779a",
+      "describe": "wine-11.0-21-anocore-crypt1120",
       "path": "ps5-proton/ps5-wine"
     },
     {

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the launcher title, PPSA99030 (ps5/paths.sh), from C sources and existing
+# Build the launcher title, PPSA99130 (ps5/paths.sh), from C sources and existing
 # Unix .o/.a inputs, with ../../PS5_Vulkan's title tooling as
 # tools/build-radv-title.sh uses it: its CRT
 # and C++ runtime (tooling/native), its linker script, its ps5-native-tool

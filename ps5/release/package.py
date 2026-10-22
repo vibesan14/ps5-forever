@@ -3,7 +3,7 @@
 
     python3 ps5/release/package.py --tag 01.000.000 [--title DIR] [--out DIR]
 
-Writes <out>/PPSA99030.zip with the PPSA99030/ app folder at its top, the
+Writes <out>/PPSA99130.zip with the PPSA99130/ app folder at its top, the
 same bytes for the same build: sorted entries, fixed times and modes. The
 tag must be the content version (NN.NNN.NNN) in both the source and the
 built sce_sys/param.json. Qualification receipts stay out (they are build
@@ -27,7 +27,7 @@ PS5 = HERE.parent
 sys.path.insert(0, str(PS5 / "probes/psmkit-wine"))
 from runtime_profiles import qualified_b1_folder
 
-TITLE_ID = "PPSA99030"
+TITLE_ID = "PPSA99130"
 LIMIT = 2 << 30            # the catalog's artifact limit
 EPOCH = (1980, 1, 1, 0, 0, 0)
 

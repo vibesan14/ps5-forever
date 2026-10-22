@@ -257,38 +257,57 @@ static void test_prefix_ready(void)
 
 static void test_migration(void)
 {
-    char prefix[1024], home[1024], cache[1024], legacy[1024], store[1024], from[1024] = "";
-    path(prefix, "forever/prefix");
-    path(home, "forever/home");
-    path(cache, "forever/radv-shader-cache");
-    path(legacy, "homebrew/PPSA99030/wine");
-    path(store, "prosperostore/previous/PPSA99030/wine");
-    const char *roots[] = { legacy, store };
-    char forever[1024];
-    path(forever, "forever");
-    assert(!forever_mkdirs(forever));
+    char prefix[1024], home[1024], cache[1024], inapp[1024], dataroot[1024], from[1024] = "";
+    path(prefix, "anocore/prefix");
+    path(home, "anocore/home");
+    path(cache, "anocore/radv-shader-cache");
+    path(inapp, "homebrew/PPSA99130/wine");
+    path(dataroot, "forever");
+    const char *roots[] = { dataroot, inapp };
+    char anocore[1024];
+    path(anocore, "anocore");
+    assert(!forever_mkdirs(anocore));
 
     assert(forever_migrate(prefix, home, cache, roots, 2, from, sizeof(from)) == 0); /* nothing anywhere */
 
-    make_prefix("prosperostore/previous/PPSA99030/wine/prefix");
-    put("prosperostore/previous/PPSA99030/wine/prefix/drive_c/game.txt", "48 GiB\n");
-    put("prosperostore/previous/PPSA99030/wine/home/.cache/x", "h\n");
-    put("prosperostore/previous/PPSA99030/radv-shader-cache/mesa_cache.db", "pipelines\n");
+    /* The pre-fork data root kept its shader cache inside the root itself. */
+    make_prefix("forever/prefix");
+    put("forever/prefix/drive_c/game.txt", "48 GiB\n");
+    put("forever/home/.cache/x", "h\n");
+    put("forever/radv-shader-cache/mesa_cache.db", "pipelines\n");
     assert(forever_migrate(prefix, home, cache, roots, 2, from, sizeof(from)) == 1);
-    assert(!strcmp(from, store));
-    assert(text_is("forever/prefix/drive_c/game.txt", "48 GiB\n"));
-    assert(text_is("forever/home/.cache/x", "h\n"));
-    assert(text_is("forever/radv-shader-cache/mesa_cache.db", "pipelines\n")); /* the app's cache came along */
+    assert(!strcmp(from, dataroot));
+    assert(text_is("anocore/prefix/drive_c/game.txt", "48 GiB\n"));
+    assert(text_is("anocore/home/.cache/x", "h\n"));
+    assert(text_is("anocore/radv-shader-cache/mesa_cache.db", "pipelines\n")); /* the cache came along */
     {
         char moved[1100];
-        snprintf(moved, sizeof(moved), "%s/prefix", store);
+        snprintf(moved, sizeof(moved), "%s/prefix", dataroot);
         assert(!forever_exists(moved)); /* moved, not copied */
     }
 
-    /* an existing prefix in /data/forever is never replaced */
-    make_prefix("homebrew/PPSA99030/wine/prefix");
+    /* An existing prefix in /data/anocore is never replaced. */
+    make_prefix("homebrew/PPSA99130/wine/prefix");
     assert(forever_migrate(prefix, home, cache, roots, 2, from, sizeof(from)) == 0);
-    assert(text_is("forever/prefix/drive_c/game.txt", "48 GiB\n"));
+    assert(text_is("anocore/prefix/drive_c/game.txt", "48 GiB\n"));
+
+    /* The older in-app layout kept the cache beside the app folder. */
+    {
+        char scratch_prefix[1024], scratch_home[1024], scratch_cache[1024], fresh[1024];
+        path(scratch_prefix, "second/prefix");
+        path(scratch_home, "second/home");
+        path(scratch_cache, "second/radv-shader-cache");
+        path(fresh, "second");
+        assert(!forever_mkdirs(fresh));
+        make_prefix("homebrew/PPSA99130/wine/prefix");
+        put("homebrew/PPSA99130/wine/home/.cache/y", "h\n");
+        put("homebrew/PPSA99130/radv-shader-cache/mesa_cache.db", "sibling\n");
+        const char *only[] = { inapp };
+        assert(forever_migrate(scratch_prefix, scratch_home, scratch_cache,
+                              only, 1, from, sizeof(from)) == 1);
+        assert(text_is("second/home/.cache/y", "h\n"));
+        assert(text_is("second/radv-shader-cache/mesa_cache.db", "sibling\n"));
+    }
 }
 
 static const char managed_v1[] =
@@ -946,12 +965,12 @@ static void test_permission_message(void)
     assert(!forever_permission_error(-ENOENT));
     assert(forever_permission_message(
                message, sizeof(message),
-               "/data/forever/prefix/drive_c/wineps5-fg.txt",
-               "/data/forever/prefix") > 0);
+               "/data/anocore/prefix/drive_c/wineps5-fg.txt",
+               "/data/anocore/prefix") > 0);
     assert(!strcmp(message,
-        "Forever Launcher can't write to /data/forever/prefix/drive_c/wineps5-fg.txt "
+        "Forever Launcher can't write to /data/anocore/prefix/drive_c/wineps5-fg.txt "
         "(permission denied).\n"
-        "On a PC, use FTP to set /data/forever/prefix and everything in it to permission 777,\n"
+        "On a PC, use FTP to set /data/anocore/prefix and everything in it to permission 777,\n"
         "then start Forever Launcher again."));
     assert(!strcmp(forever_setting_permission_message(-EACCES),
                    "Forever Launcher can't save this setting (permission denied).\n"

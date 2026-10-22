@@ -1018,7 +1018,7 @@ void pw_supervisor_wait_children(void)
 #ifdef PW_RUNTIME_B1
 static pthread_mutex_t payload_lock = PTHREAD_MUTEX_INITIALIZER;
 struct payload_drain { pthread_mutex_t lock; int fd; };
-static const char payload_loader[] = "/data/homebrew/PPSA99030/wine/lib/wine/x86_64-unix/wine";
+static const char payload_loader[] = "/data/homebrew/PPSA99130/wine/lib/wine/x86_64-unix/wine";
 
 static int payload_line(int fd, const char *kind, const char *value)
 {
@@ -1163,7 +1163,7 @@ done:
 int pw_payload_spawn(const char *cmdline, const char *cwd)
 {
     static const char title_root[] = "/app0/";
-    static const char payload_root[] = "/data/homebrew/PPSA99030/";
+    static const char payload_root[] = "/data/homebrew/PPSA99130/";
     char prefix[sizeof(PW_RUNTIME_PREFIX) + sizeof(payload_root)];
     char home[sizeof(PW_RUNTIME_HOME) + sizeof(payload_root)];
     char *command = NULL, *directory = NULL;

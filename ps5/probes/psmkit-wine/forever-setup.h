@@ -1,4 +1,4 @@
-/* First-start and every-start setup of the user data in /data/forever.
+/* First-start and every-start setup of the user data in /data/anocore.
  *
  * The app folder is replaced by every store update, so everything the user
  * owns (the Wine prefix with Battle.net and the games, HOME, the shader cache)
@@ -310,16 +310,18 @@ static inline int forever_finish_init(const char *prefix)
     return 1;
 }
 
-/* Move an older in-app prefix and HOME (or the store's kept copy of the old
- * app folder) to the user data root, with the RADV shader cache the app kept
- * beside them (<legacy root>/../radv-shader-cache). rename() keeps it
- * instant: both are on the console's /data. Returns 1 moved, 0 nothing to
- * move, -errno failure. */
+/* Move an older prefix and HOME to the user data root, with the RADV shader
+ * cache that went with them. Two layouts exist: an older in-app prefix kept
+ * the cache beside the app folder (<legacy root>/../radv-shader-cache), while
+ * a data root such as /data/forever kept it inside (<legacy root>/...). Both
+ * are probed. rename() keeps it instant: everything is on the console's
+ * /data. Returns 1 moved, 0 nothing to move, -errno failure. */
 static inline int forever_migrate(const char *prefix, const char *home, const char *cache,
                                   const char *const *legacy_roots, size_t legacy_count,
                                   char *from, size_t from_size)
 {
-    char legacy_prefix[1024], legacy_home[1024], legacy_cache[1024], probe[1100];
+    char legacy_prefix[1024], legacy_home[1024], legacy_cache[1024], sibling_cache[1024];
+    char probe[1100];
     struct stat status;
     if (from && from_size) from[0] = 0;
     if (snprintf(probe, sizeof(probe), "%s/system.reg", prefix) >= (int)sizeof(probe))
@@ -331,7 +333,8 @@ static inline int forever_migrate(const char *prefix, const char *home, const ch
         const char *slash = strrchr(legacy_roots[i], '/');
         snprintf(legacy_prefix, sizeof(legacy_prefix), "%s/prefix", legacy_roots[i]);
         snprintf(legacy_home, sizeof(legacy_home), "%s/home", legacy_roots[i]);
-        snprintf(legacy_cache, sizeof(legacy_cache), "%.*s/radv-shader-cache",
+        snprintf(legacy_cache, sizeof(legacy_cache), "%s/radv-shader-cache", legacy_roots[i]);
+        snprintf(sibling_cache, sizeof(sibling_cache), "%.*s/radv-shader-cache",
                  slash ? (int)(slash - legacy_roots[i]) : 0, legacy_roots[i]);
         if (from) snprintf(from, from_size, "%s", legacy_roots[i]);
         snprintf(probe, sizeof(probe), "%s/system.reg", legacy_prefix);
@@ -343,6 +346,9 @@ static inline int forever_migrate(const char *prefix, const char *home, const ch
         /* Move the prefix last: system.reg is the completion marker checked
          * above, so a permission failure moving HOME/cache remains retryable. */
         if (forever_is_dir(legacy_cache) && rename(legacy_cache, cache) &&
+            errno != ENOTEMPTY && errno != EEXIST)
+            return -errno;
+        if (forever_is_dir(sibling_cache) && rename(sibling_cache, cache) &&
             errno != ENOTEMPTY && errno != EEXIST)
             return -errno;
         if (forever_is_dir(legacy_home) && rename(legacy_home, home) &&

@@ -13,7 +13,7 @@ WRITEBROKER_RELATIVE = 'writebroker.elf'
 WRITEBROKER_MAX_BYTES = 1024 * 1024
 # User data outside the app folder, which a store update replaces. ShadowMountPlus
 # 1.7beta3+ mounts /data into the title's sandbox.
-USER_DATA_ROOT = '/data/forever'
+USER_DATA_ROOT = '/data/anocore'
 
 
 def _valid_hdr_mode(setting):
@@ -136,7 +136,7 @@ def profile(name, overrides=None):
     loader = root + '/lib/wine/x86_64-unix/wine'
     selected = {
         'name': name, 'root': root,
-        'remote_root': '/data/homebrew/PPSA99030/' + root.removeprefix('/app0/'),
+        'remote_root': '/data/homebrew/PPSA99130/' + root.removeprefix('/app0/'),
         'loader': loader, 'prefix': fixture + '/prefix', 'home': fixture + '/home',
         'server': root + '/server-title' if b1 else fixture + '/server-title',
         'debug': 'err+all,fixme+all,+seh,+loaddll' if b1 else '+seh',

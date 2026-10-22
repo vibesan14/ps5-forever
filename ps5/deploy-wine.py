@@ -34,7 +34,7 @@
 
 PROGRAM is a console path under $WINE_ROOT, Wine's Z: drive
 ($WINE_ROOT/tests/m3/m3test.exe), or a Windows path. Everything Wine uses on
-the console lives in $WINE_ROOT (/data/homebrew/PPSA99030/wine, inside the
+the console lives in $WINE_ROOT (/data/homebrew/PPSA99130/wine, inside the
 launcher title's folder): the install (bin, lib, share), the prefix (prefix),
 HOME (home) and test programs (tests).
 Files whose size and previously uploaded hash match are skipped on plain upload.
@@ -689,7 +689,7 @@ def title_root_upload(args):
                       for item in qualification["material"]["title_root"]}
     root = profile("b1")["remote_root"]
     if root != TITLE_ROOT + "/wine-title":
-        raise SystemExit("B1 profile is only authorized for PPSA99030")
+        raise SystemExit("B1 profile is only authorized for PPSA99130")
     procs = control("procs")
     if "count=0" not in procs:
         raise SystemExit(f"title is not idle: {procs}")
@@ -738,13 +738,13 @@ def title_root_upload(args):
 
 def b1_preflight(folder, require_battlenet=True):
     """Read-only checks before B1 title files are published: a qualified folder
-    for PPSA99030, an idle title, the uploaded root matching the qualifier,
+    for PPSA99130, an idle title, the uploaded root matching the qualifier,
     and an initialized prefix (update timestamp, registries) holding Battle.net
     unless require_battlenet is false (the title then installs it itself)."""
     qualification, manifest = qualified_b1_folder(folder)
     selected = qualification["material"]["profile"]
     if selected["remote_root"] != TITLE_ROOT + "/wine-title":
-        raise SystemExit("B1 profile is only authorized for PPSA99030")
+        raise SystemExit("B1 profile is only authorized for PPSA99130")
     guards = b1_guard_paths(folder, TITLE_ROOT)
     files = b1_title_files(folder)
     material = qualification["material"]
@@ -850,7 +850,7 @@ def install_home_art(run, art):
 
 
 def b1_title_install(args):
-    """Make the qualified B1 title PPSA99030's program: the home-screen icon then
+    """Make the qualified B1 title PPSA99130's program: the home-screen icon then
     runs Battle.net inside the title, on the title's own direct memory, instead
     of the launcher title's payload Wine, whose memory comes from the console's
     and froze it twice (2026-10-04, 2026-10-08). Nothing is launched and
@@ -862,7 +862,7 @@ def b1_title_install(args):
     prefix = selected["prefix"].replace("/app0/", TITLE_ROOT + "/", 1)
     home = selected["home"].replace("/app0/", TITLE_ROOT + "/", 1)
     # The app owns its prefix files, Battle.net's SwiftShader manifest, the
-    # first-start prefix in /data/forever (forever-setup.h) and its home-screen
+    # first-start prefix in /data/anocore (forever-setup.h) and its home-screen
     # icon (title-icon.h): install the title and the backgrounds only.
     backup = RUNS / f"{args.run}-backup"
     title_backup(argparse.Namespace(run=args.run, guard_paths=guards, title_only=True))

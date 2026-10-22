@@ -256,12 +256,20 @@ cache_key_wine() {
     freetype_key=$(cache_key_freetype)
     gnutls_key=$(cache_key_gnutls)
     vkd3d_key=$(cache_key_vkd3d)
+    # The pin decides the whole source tree, including server/protocol.def that
+    # tools/make_requests turns into the protocol headers every object sees.
+    # Without it a re-pin reused an entry built from other sources, so the
+    # cached objects were invalid and make rebuilt all of them.
+    local wine_pin
+    wine_pin=$(git -C "$WINE_SRC" rev-parse HEAD)
     cache_key_common wine \
         --source PS5_PayloadSDK --source PS5_Vulkan \
         --path "$wow/ps5/build-wine.sh" \
         --path "$wow/ps5/paths.sh" \
         --path "$WINE_SRC/configure.ac" \
         --path "$WINE_SRC/configure" \
+        --path "$WINE_SRC/server/protocol.def" \
+        --value "wine-pin=$wine_pin" \
         --value "sdk-revision=$sdk_revision" \
         --value "freetype-output-key=$freetype_key" \
         --value "gnutls-output-key=$gnutls_key" \
@@ -404,10 +412,33 @@ trap cleanup EXIT
 # symlinks and modes are created, before anything validates or builds.
 rematerialize_windows_checkouts() {
     python3 - "$root" "$here/deps.json" <<'PY'
-import json, pathlib, subprocess, sys
+import json, os, pathlib, subprocess, sys
 root = pathlib.Path(sys.argv[1])
 deps = json.load(open(sys.argv[2]))
 paths = [deps['project']['path'], *[source['path'] for source in deps['sources']]]
+def stamp_worktree(repo):
+    # The runner re-copies these checkouts every run, so every tracked file
+    # carries the copy's mtime and make treats every cached object as stale
+    # (Wine then re-runs config.status, which rewrites include/config.h, and
+    # recompiles all of its objects). Stamp a dependency tree to its commit
+    # time: cached outputs stay newer, and wine-sync-source still bumps the
+    # files whose git blob changed, so exactly those rebuild. The regenerated
+    # protocol headers are stamped too: tools/make_requests is deterministic,
+    # so they match what the cached objects were built against, and a changed
+    # protocol.def already produces a different Wine cache key. The project
+    # tree is never stamped: make must see edited sources there.
+    seconds = int(subprocess.check_output(
+        ['git', '-C', str(repo), 'log', '-1', '--format=%ct', 'HEAD'], text=True).strip())
+    listed = subprocess.run(['git', '-C', str(repo), 'ls-files', '-z'],
+                            capture_output=True, check=True).stdout
+    for record in listed.split(b'\x00'):
+        if not record:
+            continue
+        path = repo / record.decode('utf-8', 'surrogateescape')
+        try:
+            os.utime(path, (seconds, seconds), follow_symlinks=False)
+        except FileNotFoundError:
+            pass
 for path in sorted(set(paths)):
     repo = root / path
     # The share is owned by the host user; make it writable for git inside
@@ -460,6 +491,8 @@ for path in sorted(set(paths)):
                            cwd=str(repo), check=True)
         print(f'REGENERATED {path}: wine protocol headers '
               f'(assume-unchanged: {", ".join(dirty) if dirty else "none"})')
+    if path != deps['project']['path']:
+        stamp_worktree(repo)
 PY
 }
 # Upstream pinned blobs contain CRLF endings (e.g. PS5_Vulkan's
@@ -491,4 +524,4 @@ stage runtime-b1-dual make -s -C ps5/probes/psmkit-wine runtime-b1-dual
 stage package python3 ps5/release/package.py --tag "$tag"
 python3 "$cache_helper" prune --cache "$FOREVER_BUILD_CACHE" --keep 2
 python3 "$cache_helper" size --cache "$FOREVER_BUILD_CACHE"
-printf 'BUILD_COMPLETE seconds=%s zip=%s\n' "$((SECONDS - started))" "$wow/ps5/build/release/PPSA99030.zip"
+printf 'BUILD_COMPLETE seconds=%s zip=%s\n' "$((SECONDS - started))" "$wow/ps5/build/release/PPSA99130.zip"
