@@ -979,6 +979,105 @@ static void test_permission_message(void)
     assert(!forever_setting_permission_message(-EIO));
 }
 
+static unsigned sewn_times(const char *relative, const char *section, size_t section_size)
+{
+    static char buffer[1u << 16];
+    char p[1024];
+    unsigned count = 0;
+    path(p, relative);
+    assert(forever_read_file(p, buffer, sizeof(buffer)) >= 0);
+    for (const char *scan = buffer; (scan = strstr(scan, section)) != NULL; scan += section_size)
+        ++count;
+    return count;
+}
+
+static void test_cert_sew(void)
+{
+    static const char needle[] =
+        "SystemCertificates\\\\Root\\\\Certificates\\\\" ANOCORE_SERVER_CERT_KEY;
+    static const char section[] =
+        "[Software\\\\Microsoft\\\\SystemCertificates\\\\Root\\\\Certificates\\\\"
+        ANOCORE_SERVER_CERT_KEY "] 1580000000\n\n\"Blob\"=hex:" ANOCORE_SERVER_CERT_BLOB "\n";
+    static char user_before[1u << 16];
+    char p[1024], q[1024];
+    size_t section_size = sizeof(section) - 1;
+
+    /* the generated hex constant keeps its byte count agreement */
+    assert(strlen(ANOCORE_SERVER_CERT_BLOB) == (size_t)ANOCORE_SERVER_CERT_BLOB_BYTES * 3 - 1);
+
+    /* A fresh tiny prefix gets the exact serialized entry in both hives and a
+     * marker that holds the thumbprint. */
+    path(p, "sew/prefix");
+    make_prefix("sew/prefix");
+    assert(!forever_cert_sew(p));
+    assert(sewn_times("sew/prefix/user.reg", section, section_size) == 1);
+    assert(sewn_times("sew/prefix/system.reg", section, section_size) == 1);
+    assert(text_is("sew/prefix/.forever-cert", ANOCORE_SERVER_CERT_KEY "\n"));
+    path(q, "sew/prefix/user.reg");
+    ssize_t user_size = forever_read_file(q, user_before, sizeof(user_before));
+    assert(user_size > 0);
+
+    /* Later starts read the marker and touch nothing. */
+    assert(!forever_cert_sew(p));
+    {
+        static char user_after[1u << 16];
+        ssize_t after = forever_read_file(q, user_after, sizeof(user_after));
+        assert(after == user_size && !memcmp(user_after, user_before, (size_t)user_size));
+    }
+
+    /* A migrated prefix carries the entry without a marker: the scan still
+     * installs nothing, only the marker appears. */
+    path(q, "sew/prefix/.forever-cert");
+    assert(!unlink(q));
+    assert(!forever_cert_sew(p));
+    assert(sewn_times("sew/prefix/user.reg", section, section_size) == 1);
+    assert(text_is("sew/prefix/.forever-cert", ANOCORE_SERVER_CERT_KEY "\n"));
+
+    /* A missing hive is skipped for wineboot to create; the CurrentUser entry
+     * still counts as installed, so the marker is written anyway. */
+    path(q, "sew/prefix/system.reg");
+    assert(!unlink(q));
+    path(q, "sew/prefix/.forever-cert");
+    assert(!unlink(q));
+    assert(!forever_cert_sew(p));
+    path(q, "sew/prefix/system.reg");
+    assert(!forever_exists(q));
+    assert(sewn_times("sew/prefix/user.reg", section, section_size) == 1);
+    assert(text_is("sew/prefix/.forever-cert", ANOCORE_SERVER_CERT_KEY "\n"));
+
+    /* A half-made prefix without registries stays untrusted until Wine's own
+     * bare wineboot creates them; the next start sews the entry then. */
+    path(p, "sew/empty");
+    assert(!forever_mkdirs(p));
+    assert(!forever_cert_sew(p));
+    path(q, "sew/empty/user.reg");
+    assert(!forever_exists(q));
+    path(q, "sew/empty/system.reg");
+    assert(!forever_exists(q));
+    path(q, "sew/empty/.forever-cert");
+    assert(!forever_exists(q));
+    make_prefix("sew/empty");
+    assert(!forever_cert_sew(p));
+    assert(sewn_times("sew/empty/user.reg", section, section_size) == 1);
+    assert(sewn_times("sew/empty/system.reg", section, section_size) == 1);
+
+    /* The presence scan splits its reads: a needle that straddles the chunk
+     * border is still found, and padding without the entry answers 0. */
+    static char span[220000];
+    memset(span, 'x', sizeof(span));
+    memcpy(span + 65536 - 40, needle, sizeof(needle) - 1);
+    path(q, "sew/span");
+    assert(!forever_write_file(q, span, sizeof(span)));
+    assert(forever_cert_present(q, needle, sizeof(needle) - 1) == 1);
+    memcpy(span + 65536 - 40, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", 40);
+    memcpy(span + 66000, needle, sizeof(needle) - 1);
+    assert(!forever_write_file(q, span, sizeof(span)));
+    assert(forever_cert_present(q, needle, sizeof(needle) - 1) == 1);
+    memcpy(span + 66000, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", 40);
+    assert(!forever_write_file(q, span, sizeof(span)));
+    assert(forever_cert_present(q, needle, sizeof(needle) - 1) == 0);
+}
+
 static void test_managed_repair_log_cap(void)
 {
     char manifest[4096];
@@ -1093,6 +1192,7 @@ int main(int argc, char **argv)
     test_wow_config();
     test_standard_folders();
     test_permission_message();
+    test_cert_sew();
 cleanup:;
     char command[300];
     snprintf(command, sizeof(command), "rm -rf %s", root);

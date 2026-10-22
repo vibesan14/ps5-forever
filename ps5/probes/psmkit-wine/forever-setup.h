@@ -18,6 +18,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "anocore-server.h"
 #include "sha256.h"
 #include "wow-channels.h"
 
@@ -358,6 +359,175 @@ static inline int forever_migrate(const char *prefix, const char *home, const ch
         if (rename(legacy_prefix, prefix)) return -errno;
         return 1;
     }
+    return 0;
+}
+
+#define FOREVER_CERT_MARKER ".forever-cert"
+/* Full rewrite through a temporary file is the crash-safe path, so it serves
+ * every prefix whose registries are under this limit. A larger registry file
+ * gets the single append; it replays identically on the next start after any
+ * interrupt, and a repeated identical key is harmless to the registry loader. */
+#define FOREVER_CERT_REWRITE_LIMIT (4u << 20)
+
+/* 1 present, 0 absent, -errno failure. The needle cannot cross a read border:
+ * every chunk keeps the previous chunk's tail until the search can be complete. */
+static inline int forever_cert_present(const char *path, const char *needle, size_t needle_size)
+{
+    static unsigned char buffer[1u << 16], tail[256];
+    struct stat status;
+    size_t kept = 0;
+    int fd, found = 0;
+
+    if (needle_size >= sizeof(tail)) return -EINVAL;
+    fd = open(path, O_RDONLY);
+    if (fd < 0) return errno == ENOENT ? 0 : -errno;
+    if (fstat(fd, &status))
+    {
+        int result = -errno;
+        close(fd);
+        return result;
+    }
+    for (;;)
+    {
+        ssize_t count = read(fd, buffer + kept, sizeof(buffer) - kept);
+        if (count < 0 && errno == EINTR) continue;
+        if (count < 0)
+        {
+            int result = -errno;
+            close(fd);
+            return result;
+        }
+        size_t span = kept + (size_t)count;
+        for (size_t i = 0; i + needle_size <= span; ++i)
+        {
+            if (!memcmp(buffer + i, needle, needle_size))
+            {
+                found = 1;
+                break;
+            }
+        }
+        if (found || !count) break;
+        kept = span < needle_size - 1 ? span : needle_size - 1;
+        if (kept) memmove(tail, buffer + span - kept, kept);
+        if (kept) memcpy(buffer, tail, kept);
+    }
+    close(fd);
+    return found;
+}
+
+static inline int forever_cert_append(const char *path, const char *section, size_t section_size)
+{
+    struct stat status;
+    int fd, result = 0;
+    if (stat(path, &status)) return -errno;
+    if (!S_ISREG(status.st_mode)) return -EINVAL;
+    /* The append covers a registry file grown past the rewrite limit: it
+     * opens without following a link, writes once, and flushes before any
+     * marker claims the entry. */
+    fd = open(path, O_WRONLY | O_APPEND | O_NOFOLLOW);
+    if (fd < 0) return -errno;
+    for (size_t done = 0; done < section_size;)
+    {
+        ssize_t count = write(fd, section + done, section_size - done);
+        if (count < 0 && errno == EINTR) continue;
+        if (count <= 0)
+        {
+            result = count < 0 ? -errno : -EIO;
+            break;
+        }
+        done += (size_t)count;
+    }
+    if (!result && fsync(fd)) result = -errno;
+    if (close(fd) && !result) result = -errno;
+    return result;
+}
+
+static inline int forever_cert_append_full(const char *path, const char *section,
+                                           size_t section_size)
+{
+    static char full[FOREVER_CERT_REWRITE_LIMIT + 16 + 4096];
+    ssize_t used = forever_read_file(path, full, FOREVER_CERT_REWRITE_LIMIT);
+    if (used < 0) return (int)used;
+    size_t size = (size_t)used, join = size && full[size - 1] != '\n' ? 1 : 0;
+    if (join) full[size++] = '\n';
+    if (size + section_size >= sizeof(full)) return -EFBIG;
+    memcpy(full + size, section, section_size);
+    size += section_size;
+    return forever_write_file(path, full, size);
+}
+
+/* Write the AnoCore server's trust into the prefix's own Windows certificate
+ * stores. On a PC, Trust-Server-Certificate.cmd does this once per Windows
+ * user with certutil -user -addstore Root. A console prefix must be ready
+ * before Wine starts anything, so the equivalent registry entry is written in
+ * the text form crypt32 itself produces and consumes (crypt32/serialize.c):
+ * a WINE_CERT_PROP_HEADER {CERT_CERT_PROP_ID (32), 1, cb} followed by the DER
+ * bytes, stored as the "Blob" value of
+ * <hive>\Software\Microsoft\SystemCertificates\Root\Certificates\<SHA-1 of
+ * the DER>. RegReadSerializedFromReg recomputes the hash and keeps only an
+ * entry whose key name matches; hash-less contexts still work, because
+ * CertGetCertificateContextProperty computes the hash on demand (cert.c).
+ * Both root hives get the same key: user.reg is what -user would hold,
+ * system.reg serves tools that read LocalMachine\Root.
+ *
+ * Runs on the start path before wineboot or any Wine process, so the registry
+ * files cannot be open elsewhere. Idempotent by content: a marker records a
+ * completed install, and a text scan skips an entry already present without
+ * the marker. Returns 0 or -errno. Failure is the server's "not trusted"
+ * outcome (the game reports its own error), never a start blocker: an
+ * untrusted prefix still boots. */
+static inline int forever_cert_sew(const char *prefix)
+{
+    static const char needle[] =
+        "SystemCertificates\\\\Root\\\\Certificates\\\\" ANOCORE_SERVER_CERT_KEY;
+    static const char section[] =
+        "[Software\\\\Microsoft\\\\SystemCertificates\\\\Root\\\\Certificates\\\\"
+        ANOCORE_SERVER_CERT_KEY "] 1580000000\n\n\"Blob\"=hex:" ANOCORE_SERVER_CERT_BLOB "\n";
+    static const char *const hives[] = { "user.reg", "system.reg" };
+    const size_t needle_size = sizeof(needle) - 1, section_size = sizeof(section) - 1;
+    char path[1100], marker[1100], text[64];
+    int result, sewn_user = 0;
+    ssize_t got;
+
+    if (snprintf(marker, sizeof(marker), "%s/" FOREVER_CERT_MARKER, prefix) >= (int)sizeof(marker))
+        return -ENAMETOOLONG;
+    got = forever_read_file(marker, text, sizeof(text));
+    if (got > 0 && !strncmp(text, ANOCORE_SERVER_CERT_KEY, sizeof(ANOCORE_SERVER_CERT_KEY) - 1))
+        return 0; /* installed by an earlier start: zero I/O */
+    if (got < 0 && got != -ENOENT) return (int)got;
+    for (size_t i = 0; i < sizeof(hives) / sizeof(hives[0]); ++i)
+    {
+        int appended;
+        if (snprintf(path, sizeof(path), "%s/%s", prefix, hives[i]) >= (int)sizeof(path))
+            return -ENAMETOOLONG;
+        result = forever_cert_present(path, needle, needle_size);
+        if (result < 0) return result;
+        if (result)
+        {
+            if (!i) sewn_user = 1;
+            continue;
+        }
+        {
+            struct stat status;
+            if (stat(path, &status))
+            {
+                if (errno == ENOENT) continue; /* wineboot creates the hive */
+                return -errno;
+            }
+            appended = status.st_size >= FOREVER_CERT_REWRITE_LIMIT ?
+                forever_cert_append(path, section, section_size) :
+                forever_cert_append_full(path, section, section_size);
+        }
+        if (appended) return appended;
+        if (!i) sewn_user = 1;
+    }
+    /* The marker never claims a start that trusted nothing: a prefix whose
+     * CurrentUser hive did not exist stays unseeded, and the next start sews
+     * it after Wine has created the registries. */
+    if (!sewn_user) return 0;
+    if (forever_write_file(marker, ANOCORE_SERVER_CERT_KEY "\n",
+                           sizeof(ANOCORE_SERVER_CERT_KEY "\n") - 1))
+        return -errno;
     return 0;
 }
 
