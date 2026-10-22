@@ -17,6 +17,9 @@ HOST_CC ?= cc
 LLVM_MINGW ?= $(HOME)/llvm-mingw
 MINGW_CC ?= $(LLVM_MINGW)/bin/x86_64-w64-mingw32-clang
 MINGW32_CC ?= $(LLVM_MINGW)/bin/i686-w64-mingw32-clang
+# The AnoCore player kit root inside the build container; build-linux.sh mounts
+# it read-only from the self-hosted build machine's kit path.
+ANOCORE_KIT ?= /anocore-kit
 WINE_BUILD ?= ../../build/wine-ps5-build
 WINEBUILD ?= ../../build/wine-ps5-tools/tools/winebuild/winebuild
 WRITEBROKER_ELF := ../../build/writebroker/writebroker.elf
@@ -72,7 +75,7 @@ runtime-b1: $(HOST_OUT)/test-staged-runtime build-runtime.py runtime_profiles.py
 	# mingw compilers configure chose; they live in llvm-mingw's bin.
 	PATH="$(dir $(MINGW_CC)):$$PATH" python3 build-runtime.py --wine-build "$(WINE_BUILD)" \
 		--profile b1 $(B1_CONFIG_ARG) --writebroker-elf "$(WRITEBROKER_ELF)" \
-		--quarantine "$(B1_QUARANTINE)"
+		--quarantine "$(B1_QUARANTINE)" --launcher-kit "$(ANOCORE_KIT)"
 	python3 inspect-runtime.py --wine-build "$(WINE_BUILD)" --profile b1 $(B1_CONFIG_ARG) \
 		--host-test "$(HOST_OUT)/test-staged-runtime" \
 		--parent-title "$(B1_QUARANTINE)/parent-title" --quarantine "$(B1_QUARANTINE)" --publish "$(B1_OUT)"

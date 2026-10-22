@@ -15,6 +15,15 @@ if [[ ${1:-} != --container ]]; then
     image_id=$(docker image inspect --platform linux/amd64 --format '{{.Id}}' "$image" 2>/dev/null) ||
         image_id=$(docker image inspect --format '{{.Id}}' "$image")
     printf 'BUILD_STAGE image seconds=%s id=%s\n' "$((SECONDS - start))" "$image_id"
+    # The AnoCore launcher kit ships inside the title, so the build cannot run
+    # without it; the self-hosted machine keeps the kit at this path and the
+    # container reads it read-only at /anocore-kit (build-runtime.py's
+    # --launcher-kit default).
+    anocore_kit=${FOREVER_ANOCORE_KIT_DIR:-C:/AnoCore-Server/player-launcher/AnoWoW-Launcher}
+    [[ -d $anocore_kit ]] || {
+        echo "AnoCore launcher kit missing: $anocore_kit (point FOREVER_ANOCORE_KIT_DIR at the kit root)" >&2
+        exit 1
+    }
     # Git Bash (MSYS) rewrites POSIX arguments passed to the native docker
     # CLI, turning the in-container script path below into a Windows path;
     # disable that conversion so the arguments stay verbatim.
@@ -23,6 +32,7 @@ if [[ ${1:-} != --container ]]; then
         --user "$(id -u):$(id -g)" \
         --env HOME=/tmp/forever-builder \
         --mount "type=bind,source=$sources,target=/sources" \
+        --mount "type=bind,source=$anocore_kit,target=/anocore-kit,readonly" \
         --env "JOBS=${JOBS:-}" \
         --env "FOREVER_BUILD_CACHE=/sources/.cache" \
         --env "FOREVER_CLEAN_CACHE=${FOREVER_CLEAN_CACHE:-0}" \

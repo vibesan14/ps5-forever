@@ -41,6 +41,9 @@ parser.add_argument('--vkd3d-dlls', type=Path, default=here / '../../build/vkd3d
     help="ps5/build-vkd3d-proton.sh's 64-bit d3d12.dll and d3d12core.dll (B1 only)")
 parser.add_argument('--dxvk-dlls', type=Path, default=here / '../../build/dxvk-64/dlls',
     help="ps5/build-dxvk.sh's 64-bit dxgi.dll, the game's native dxgi (B1 only)")
+parser.add_argument('--launcher-kit', type=Path, default=Path('/anocore-kit'),
+    help='AnoCore player kit root, mounted read-only into the build container '
+         '(/anocore-kit); the kit ships inside the title (B1 only)')
 args = parser.parse_args()
 build = args.wine_build.resolve()
 selected = profile(args.profile, json.loads(args.profile_config.read_text()) if args.profile_config else None)
@@ -818,6 +821,48 @@ if args.profile == 'b1':
                 raise SystemExit(f'missing app-owned prefix file {source}')
             shutil.copy2(source, forever / 'system32' / name)
             owned[f'drive_c/windows/system32/{name}'] = f'share/forever/system32/{name}'
+    # The AnoCore player kit rides inside the title: Wine's prefix gets the kit
+    # at drive_c/AnoCore (b1-product.json starts its launcher from there) and
+    # the PC-side helpers stay beside it for anyone using a PC. build-linux.sh
+    # mounts the kit read-only as /anocore-kit. Verify the kit against the
+    # generated anocore-server.h constants before copying: a kit for a
+    # different server must never reach a release, and the registry entry
+    # forever_cert_sew writes must be the certificate the launcher's HTTPS
+    # actually presents.
+    kit = args.launcher_kit
+    for name in ('server-root.cer', 'server-host.txt', 'server-name.txt',
+                 'Trust-Server-Certificate.cmd',
+                 'WoW-Forever-Permanent-Launcher/ForeverPermanentLauncher.exe'):
+        if not (kit / name).is_file():
+            raise SystemExit(f'incomplete AnoCore launcher kit, missing {name}: {kit}')
+    constants = (here / 'anocore-server.h').read_text(encoding='ascii')
+    def server_constant(name):
+        return re.search(r'#define\s+' + name + r'\s+"([^"]*)"', constants).group(1)
+    der = (kit / 'server-root.cer').read_bytes()
+    blob = (32).to_bytes(4, 'little') + (1).to_bytes(4, 'little') \
+        + len(der).to_bytes(4, 'little') + der
+    host_text = (kit / 'server-host.txt').read_text(encoding='ascii').strip()
+    name_token = (kit / 'server-name.txt').read_text(encoding='ascii').split()
+    if hashlib.sha1(der).hexdigest().upper() != server_constant('ANOCORE_SERVER_CERT_KEY'):
+        raise SystemExit('kit server-root.cer does not match anocore-server.h (thumbprint)')
+    if ','.join('%02X' % b for b in blob) != server_constant('ANOCORE_SERVER_CERT_BLOB'):
+        raise SystemExit('kit server-root.cer does not match anocore-server.h (registry blob)')
+    if (not name_token or host_text != server_constant('ANOCORE_SERVER_NAME') or
+            name_token[0] != server_constant('ANOCORE_SERVER_ADDRESS')):
+        raise SystemExit('kit server-name.txt/server-host.txt do not match anocore-server.h')
+    kit_root = tree / 'share/forever/AnoCore'
+    if kit_root.exists():
+        shutil.rmtree(kit_root)
+    shutil.copytree(kit, kit_root)
+    for source in kit_root.rglob('*'):
+        if source.is_file():
+            relative = source.relative_to(kit_root).as_posix()
+            owned[f'drive_c/AnoCore/{relative}'] = f'share/forever/AnoCore/{relative}'
+    # forever_managed_load verifies at most 4096 previous rows, and the sync
+    # report counts more than 4096 as a parse overflow: keep the manifest under
+    # the console's budget so a fat kit is caught at build time.
+    if len(owned) > 4096:
+        raise SystemExit(f'app-owned prefix manifest exceeds 4096 rows: {len(owned)}')
     lines = ['# Forever Launcher: prefix files the app owns (source below wine-title, prefix path, sha256)']
     for destination, source in sorted(owned.items()):
         path = tree / source
