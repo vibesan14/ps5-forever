@@ -1,7 +1,7 @@
 {
   "repository": "../ps5-wine",
   "branch": "anocore",
-  "commit": "ed2b4276ca2f70c7d32e1806a7aab24c6a258562",
+  "commit": "b1bbae1de522abe9e2e0b1c524dd2507f780f100",
   "origin": "https://github.com/vibesan14/ps5-forever-wine.git",
   "valve_upstream": "https://github.com/ValveSoftware/wine",
   "winehq_upstream": "https://gitlab.winehq.org/wine/wine.git",

@@ -9,10 +9,10 @@
     {
       "name": "ps5-wine",
       "url": "https://github.com/vibesan14/ps5-forever-wine.git",
-      "commit": "ed2b4276ca2f70c7d32e1806a7aab24c6a258562",
+      "commit": "b1bbae1de522abe9e2e0b1c524dd2507f780f100",
       "original_commit": "183b6b587f0baccf383f948805337154d4aa5727",
-      "content_sha256": "58bb7b1350026fda9d6c45ffa8ead57d22c2698be00762c46d9dd70145fc779a",
-      "describe": "wine-11.0-21-anocore-crypt1120",
+      "content_sha256": "0769a5f10f83038071964fd8ed046437faac7026306387c32bfb099f20388953",
+      "describe": "wine-11.0-22-anocore-servername",
       "path": "ps5-proton/ps5-wine"
     },
     {
