@@ -243,6 +243,12 @@ def native_role_imports(profile_name="p1w", *, headless=False, gpu=False):
             "sceSslTerm": "libSceSsl.prx",
             "sceNetInit": "libSceNet.prx",
         })
+        # AnoCore fork: the Battle.net installer path is compile-gated off
+        # (PW_RUNTIME_INSTALLER_ENABLED 0), so no parent role keeps the
+        # HTTP/SSL imports it brought.
+        roles["parent"] = {name: provider for name, provider in roles["parent"].items()
+                           if provider not in {"libSceHttp2.prx", "libSceSsl.prx"} and
+                           name != "sceNetInit"}
         if gpu:
             # Game mode never downloads or launches the Battle.net installer.
             roles["parent"] = {name: provider for name, provider in roles["parent"].items()

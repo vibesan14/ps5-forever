@@ -439,6 +439,16 @@ for path in sorted(set(paths)):
     if stale:
         print(f'RESMUDGED {path}: {len(stale)} CRLF worktree files')
     print(f'REMATERIALIZED {path}')
+    if path == 'ps5-proton/ps5-wine':
+        # The pinned Wine snapshot's checked-in protocol headers can fall
+        # behind its protocol.def (struct cpu_topology_override and the
+        # FSYNC_USED_BY_SERVER definition are absent there), which breaks
+        # every Unix-side server.c compile. tools/make_requests regenerates
+        # them from the pinned protocol.def right after each reset, before
+        # any stage validates or builds.
+        subprocess.run(['perl', str(repo / 'tools' / 'make_requests')],
+                       cwd=str(repo), check=True)
+        print(f'REGENERATED {path}: wine protocol headers')
 PY
 }
 # Upstream pinned blobs contain CRLF endings (e.g. PS5_Vulkan's
