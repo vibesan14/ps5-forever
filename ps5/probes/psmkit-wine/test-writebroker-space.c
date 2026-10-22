@@ -375,7 +375,7 @@ static void permission_repair_tests(void)
     int data_fd, result;
 
     snprintf(repair_data_root, sizeof(repair_data_root), "%s/repair-data", directory);
-    snprintf(forever, sizeof(forever), "%s/forever", repair_data_root);
+    snprintf(forever, sizeof(forever), "%s/anocore", repair_data_root);
     snprintf(prefix, sizeof(prefix), "%s/prefix", forever);
     snprintf(home, sizeof(home), "%s/home", forever);
     snprintf(cache, sizeof(cache), "%s/radv-shader-cache", forever);
@@ -467,7 +467,7 @@ static void permission_repair_tests(void)
     assert(!symlink(outside, home));
     memset(&repair, 0, sizeof(repair));
     repair.device = device;
-    result = repair_root(data_fd, "forever/home", 1, &repair);
+    result = repair_root(data_fd, "anocore/home", 1, &repair);
     check(result < 0 && repair.failed,
           "startup repair refuses a symlinked fixed root");
     assert(!unlink(home));
@@ -484,7 +484,7 @@ static void permission_repair_tests(void)
         }
         memset(&repair, 0, sizeof(repair));
         repair.device = device;
-        result = repair_root(data_fd, "forever/prefix/budget", 1, &repair);
+        result = repair_root(data_fd, "anocore/prefix/budget", 1, &repair);
         check(result == -E2BIG && repair.scanned == TEST_REPAIR_MAX_ENTRIES &&
               repair.skipped,
               "visited-entry budget is charged for skipped symlinks");
@@ -493,13 +493,13 @@ static void permission_repair_tests(void)
     memset(&repair, 0, sizeof(repair));
     repair.device = device;
     inject_readdir_error = 1;
-    result = repair_root(data_fd, "forever/radv-shader-cache", 1, &repair);
+    result = repair_root(data_fd, "anocore/radv-shader-cache", 1, &repair);
     check(result == -EIO && repair.failed,
           "root readdir error is reported as repair failure");
     memset(&repair, 0, sizeof(repair));
     repair.device = device;
     inject_closedir_error = 1;
-    result = repair_root(data_fd, "forever/radv-shader-cache", 1, &repair);
+    result = repair_root(data_fd, "anocore/radv-shader-cache", 1, &repair);
     check(result == -EIO && repair.failed,
           "root closedir error is reported as repair failure");
 
@@ -516,7 +516,7 @@ static void permission_repair_tests(void)
         }
         memset(&repair, 0, sizeof(repair));
         repair.device = device;
-        result = repair_root(data_fd, "forever/home", 1, &repair);
+        result = repair_root(data_fd, "anocore/home", 1, &repair);
         check(result == -E2BIG && repair.failed,
               "startup repair stops at its production depth bound");
     }
