@@ -60,7 +60,7 @@ on Windows 11 Pro) and a GitHub Actions self-hosted runner on the same machine
 `C:\AnoCore-Server\player-launcher\AnoWoW-Launcher` (`FOREVER_ANOCORE_KIT_DIR`
 overrides the path); the build refuses to run without it and stages the kit
 inside the title. Then push the tag matching `ps5/title/sce_sys/param.json`
-(`01.000.100` now): the release workflow builds `eboot.bin` + `game.bin`
+(`01.000.101` now): the release workflow builds `eboot.bin` + `game.bin`
 inside the pinned Ubuntu container from `ps5/release/Dockerfile` and attaches
 `PPSA99130.zip` to the release. See [BUILDING.md](BUILDING.md); everything
 below this point is the **original Forever Launcher's own documentation** and
