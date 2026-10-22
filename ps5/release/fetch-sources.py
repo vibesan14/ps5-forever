@@ -4,10 +4,17 @@
 Run from the product checkout already at SOURCE_ROOT/ps5-proton/ps5-wow:
     python3 ps5/release/fetch-sources.py SOURCE_ROOT
 No recursive Proton checkout or private build history is needed.
+
+SELF-HEALING: a dependency checkout left at another revision (e.g. by an
+earlier release build on a persistent self-hosted runner, or after a re-pin)
+is replaced with a fresh shallow checkout at the pinned commit, never trusted.
 """
 import argparse
 import json
+import os
 import re
+import shutil
+import stat
 import subprocess
 from pathlib import Path, PurePosixPath
 
@@ -16,6 +23,23 @@ def git(path, *arguments, capture=False):
     result = subprocess.run(['git', '-C', str(path), *arguments], check=True,
                             stdout=subprocess.PIPE if capture else None, text=True)
     return result.stdout.strip() if capture else None
+
+
+def _chmod_writable(function, path, _error):
+    try:
+        os.chmod(path, stat.S_IWRITE)
+    except OSError:
+        pass
+    function(path)
+
+
+def erase_checkout(destination: Path) -> None:
+    """Drop a stale dependency checkout; Windows keeps .git objects read-only."""
+    callback = _chmod_writable
+    try:
+        shutil.rmtree(destination, onexc=callback)   # Python >= 3.12
+    except TypeError:
+        shutil.rmtree(destination, onerror=callback)  # Python <= 3.11
 
 
 def main():
@@ -39,10 +63,13 @@ def main():
         if not url.startswith('https://github.com/') or '@' in url:
             raise SystemExit(f"{source['name']}: expected a public GitHub HTTPS URL")
         if (destination / '.git').exists():
-            if git(destination, 'rev-parse', 'HEAD', capture=True) != revision:
-                raise SystemExit(f'{relative}: existing checkout is not at {revision}')
-            print(f'CHECKOUT {source["name"]} {revision} existing', flush=True)
-            continue
+            at = git(destination, 'rev-parse', 'HEAD', capture=True)
+            if at == revision:
+                print(f'CHECKOUT {source["name"]} {revision} existing', flush=True)
+                continue
+            print(f'REPIN {source["name"]} {at} -> {revision}; replacing the checkout',
+                  flush=True)
+            erase_checkout(destination)
         if destination.exists() and any(destination.iterdir()):
             raise SystemExit(f'{relative}: nonempty directory is not a dependency checkout')
         destination.mkdir(parents=True, exist_ok=True)
