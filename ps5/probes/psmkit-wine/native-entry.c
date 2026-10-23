@@ -3328,6 +3328,7 @@ static void pw_title_icon_start(void)
 
 int main(int argc, char **argv)
 {
+    io_signal_blackbox_install();
     errno=0;
     int64_t now=io_now_ms();
     int saved_errno=errno, result;

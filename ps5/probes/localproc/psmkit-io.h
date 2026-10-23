@@ -33,6 +33,8 @@ _Static_assert(sizeof(struct io_reply) == 64, "reply wire size");
 _Static_assert(sizeof(IO_COOKIE) - 1 == IO_COOKIE_BYTES, "cookie wire size");
 
 void io_log(const char *format, ...);
+void io_blackbox_line(const char *line, size_t length);
+void io_signal_blackbox_install(void);
 int64_t io_now_ms(void);
 int io_transfer(int fd, void *buffer, size_t size, int writing, int64_t overall_deadline);
 uint32_t io_expected_checksum(void);
